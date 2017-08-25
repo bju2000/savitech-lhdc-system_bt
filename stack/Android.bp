@@ -24,6 +24,7 @@ cc_library_static {
         "external/aac/libSYS/include",
         "external/libldac/inc",
         "external/libldac/abr/inc",
+        "external/liblhdc/inc",
         "system/bt",
         "system/bt/btcore/include",
         "system/bt/vnd/include",
@@ -52,6 +53,8 @@ cc_library_static {
         "a2dp/a2dp_vendor_ldac.cc",
         "a2dp/a2dp_vendor_ldac_abr.cc",
         "a2dp/a2dp_vendor_ldac_encoder.cc",
+        "a2dp/a2dp_vendor_lhdc.cc",
+        "a2dp/a2dp_vendor_lhdc_encoder.cc",
         "avct/avct_api.cc",
         "avct/avct_bcb_act.cc",
         "avct/avct_ccb.cc",
@@ -179,6 +182,7 @@ cc_library_static {
     required: [
         "libldacBT_enc",
         "libldacBT_abr",
+        "liblhdcBT_enc",
     ]
 }
 
