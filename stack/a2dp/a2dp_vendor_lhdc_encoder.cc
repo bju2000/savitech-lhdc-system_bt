@@ -65,10 +65,7 @@ static const char* LHDC_GET_SAMPLING_FREQ_NAME = "lhdcBT_get_sampling_freq";
 typedef int (*tLHDC_GET_SAMPLING_FREQ)(HANDLE_LHDC_BT hLhdcParam);
 
 static const char* LHDC_INIT_HANDLE_ENCODE_NAME = "lhdcBT_init_handle_encode";
-typedef int (*tLHDC_INIT_HANDLE_ENCODE)(HANDLE_LHDC_BT hLhdcParam, int mtu,
-                                        int eqmid, int channel_mode,
-                                        LHDCBT_SMPL_FMT_T fmt,
-                                        int sampling_freq);
+typedef int (*tLHDC_INIT_HANDLE_ENCODE)(HANDLE_LHDC_BT hLhdcParam,int sampling_freq, LHDCBT_SMPL_FMT_T fmt, int bitrate);
 
 static const char* LHDC_ENCODE_NAME = "lhdcBT_encode";
 typedef int (*tLHDC_ENCODE)(HANDLE_LHDC_BT hLhdcParam, void* p_pcm,

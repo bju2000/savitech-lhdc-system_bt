@@ -40,9 +40,9 @@
 // LHDC codec specific settings
 #define A2DP_LHDC_CODEC_LEN 9
 // [Octet 0-3] Vendor ID
-#define A2DP_LHDC_VENDOR_ID 0x73617669
+#define A2DP_LHDC_VENDOR_ID 0x0000053a
 // [Octet 4-5] Vendor Specific Codec ID
-#define A2DP_LHDC_CODEC_ID 0x4C4B
+#define A2DP_LHDC_CODEC_ID 0x484C
 // [Octet 6], [Bits 0-2] Sampling Frequency
 #define A2DP_LHDC_SAMPLING_FREQ_MASK 0x07
 #define A2DP_LHDC_SAMPLING_FREQ_44100 0x04

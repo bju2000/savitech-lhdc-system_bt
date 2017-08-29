@@ -88,6 +88,12 @@ bool A2DP_VendorCodecEqualsLhdc(const uint8_t* p_codec_info_a,
 // contains invalid codec information.
 int A2DP_VendorGetTrackSampleRateLhdc(const uint8_t* p_codec_info);
 
+// Gets the bits per audio sample for the A2DP LHDC codec.
+// |p_codec_info| is a pointer to the LHDC codec_info to decode.
+// Returns the bits per audio sample on success, or -1 if |p_codec_info|
+// contains invalid codec information.
+int A2DP_VendorGetTrackBitsPerSampleLhdc(const uint8_t* p_codec_info);
+
 // Gets the channel count for the A2DP LHDC codec.
 // |p_codec_info| is a pointer to the LHDC codec_info to decode.
 // Returns the channel count on success, or -1 if |p_codec_info|

@@ -16,7 +16,7 @@
 
 /******************************************************************************
  *
- *  Utility functions to help build and parse the LDAC Codec Information
+ *  Utility functions to help build and parse the LHDC Codec Information
  *  Element and Media Payload.
  *
  ******************************************************************************/
@@ -36,28 +36,28 @@
 #include "osi/include/log.h"
 #include "osi/include/osi.h"
 
-// data type for the LDAC Codec Information Element */
-// NOTE: bits_per_sample is needed only for LDAC encoder initialization.
+// data type for the LHDC Codec Information Element */
+// NOTE: bits_per_sample is needed only for LHDC encoder initialization.
 typedef struct {
   uint32_t vendorId;
-  uint16_t codecId;    /* Codec ID for LDAC */
+  uint16_t codecId;    /* Codec ID for LHDC */
   uint8_t sampleRate;  /* Sampling Frequency */
   uint8_t channelMode; /* STEREO/DUAL/MONO */
   btav_a2dp_codec_bits_per_sample_t bits_per_sample;
 } tA2DP_LHDC_CIE;
 
-/* LDAC Source codec capabilities */
+/* LHDC Source codec capabilities */
 static const tA2DP_LHDC_CIE a2dp_lhdc_caps = {
     A2DP_LHDC_VENDOR_ID,  // vendorId
     A2DP_LHDC_CODEC_ID,   // codecId
     // sampleRate
     (A2DP_LHDC_SAMPLING_FREQ_44100 | A2DP_LHDC_SAMPLING_FREQ_48000 | A2DP_LHDC_SAMPLING_FREQ_96000),
     // channelMode
-    (A2DP_LHDC_CHANNEL_MODE_DUAL | A2DP_LHDC_CHANNEL_MODE_STEREO),
+    (A2DP_LHDC_CHANNEL_MODE_STEREO),
     // bits_per_sample
     (BTAV_A2DP_CODEC_BITS_PER_SAMPLE_16 | BTAV_A2DP_CODEC_BITS_PER_SAMPLE_24)};
 
-/* Default LDAC codec configuration */
+/* Default LHDC codec configuration */
 static const tA2DP_LHDC_CIE a2dp_lhdc_default_config = {
     A2DP_LHDC_VENDOR_ID,                // vendorId
     A2DP_LHDC_CODEC_ID,                 // codecId
@@ -79,14 +79,16 @@ UNUSED_ATTR static tA2DP_STATUS A2DP_CodecInfoMatchesCapabilityLhdc(
     const tA2DP_LHDC_CIE* p_cap, const uint8_t* p_codec_info,
     bool is_peer_codec_info);
 
-// Builds the LDAC Media Codec Capabilities byte sequence beginning from the
+// Builds the LHDC Media Codec Capabilities byte sequence beginning from the
 // LOSC octet. |media_type| is the media type |AVDT_MEDIA_TYPE_*|.
-// |p_ie| is a pointer to the LDAC Codec Information Element information.
+// |p_ie| is a pointer to the LHDC Codec Information Element information.
 // The result is stored in |p_result|. Returns A2DP_SUCCESS on success,
 // otherwise the corresponding A2DP error status code.
 static tA2DP_STATUS A2DP_BuildInfoLhdc(uint8_t media_type,
                                        const tA2DP_LHDC_CIE* p_ie,
                                        uint8_t* p_result) {
+
+  const uint8_t* tmpInfo = p_result;
   if (p_ie == NULL || p_result == NULL) {
     return A2DP_INVALID_PARAMS;
   }
@@ -118,23 +120,23 @@ static tA2DP_STATUS A2DP_BuildInfoLhdc(uint8_t media_type,
   // sample rate bit0 ~ bit2
   para = (uint8_t)(p_ie->sampleRate & A2DP_LHDC_SAMPLING_FREQ_MASK);
 
-  switch (p_ie->bits_per_sample){
-  	case BTAV_A2DP_CODEC_BITS_PER_SAMPLE_24:
-  	para = para | A2DP_LHDC_BIT_FMT_24;
-  	break;
-  	case BTAV_A2DP_CODEC_BITS_PER_SAMPLE_16:
-  	para = para | A2DP_LHDC_BIT_FMT_16;
-  	break;
-  	default:
-  	return A2DP_INVALID_PARAMS;
+  if (p_ie->bits_per_sample == (BTAV_A2DP_CODEC_BITS_PER_SAMPLE_24 | BTAV_A2DP_CODEC_BITS_PER_SAMPLE_16)) {
+      /* code */
+      para = para | (A2DP_LHDC_BIT_FMT_24 | A2DP_LHDC_BIT_FMT_16);
+  }else if(p_ie->bits_per_sample == BTAV_A2DP_CODEC_BITS_PER_SAMPLE_24){
+      para = para | A2DP_LHDC_BIT_FMT_24;
+  }else if(p_ie->bits_per_sample == BTAV_A2DP_CODEC_BITS_PER_SAMPLE_16){
+      para = para | A2DP_LHDC_BIT_FMT_16;
   }
   *p_result = para;
   if (*p_result == 0) return A2DP_INVALID_PARAMS;
 
+  LOG_DEBUG(LOG_TAG, "%s: Info build result = [0]:0x%x, [1]:0x%x, [2]:0x%x, [3]:0x%x, [4]:0x%x, [5]:0x%x, [6]:0x%x, [7]:0x%x, [8]:0x%x, [9]:0x%x",
+     __func__, tmpInfo[0], tmpInfo[1], tmpInfo[2], tmpInfo[3], tmpInfo[4], tmpInfo[5], tmpInfo[6], tmpInfo[7], tmpInfo[8], tmpInfo[9]);
   return A2DP_SUCCESS;
 }
 
-// Parses the LDAC Media Codec Capabilities byte sequence beginning from the
+// Parses the LHDC Media Codec Capabilities byte sequence beginning from the
 // LOSC octet. The result is stored in |p_ie|. The byte sequence to parse is
 // |p_codec_info|. If |is_capability| is true, the byte sequence is
 // codec capabilities, otherwise is codec configuration.
@@ -146,15 +148,23 @@ static tA2DP_STATUS A2DP_ParseInfoLhdc(tA2DP_LHDC_CIE* p_ie,
   uint8_t losc;
   uint8_t media_type;
   tA2DP_CODEC_TYPE codec_type;
+  const uint8_t* tmpInfo = p_codec_info;
 
+  //LOG_DEBUG(LOG_TAG, "%s: p_ie = %p, p_codec_info = %p", __func__, p_ie, p_codec_info);
   if (p_ie == NULL || p_codec_info == NULL) return A2DP_INVALID_PARAMS;
 
+
+  LOG_DEBUG(LOG_TAG, "%s: Parses codec info for capbility = %s", __func__, (is_capability == 1 ? "true" : "false"));
+  LOG_DEBUG(LOG_TAG, "%s: Parses codec info = [0]:0x%x, [1]:0x%x, [2]:0x%x, [3]:0x%x, [4]:0x%x, [5]:0x%x, [6]:0x%x, [7]:0x%x, [8]:0x%x, [9]:0x%x",
+   __func__, tmpInfo[0], tmpInfo[1], tmpInfo[2], tmpInfo[3], tmpInfo[4], tmpInfo[5], tmpInfo[6], tmpInfo[7], tmpInfo[8], tmpInfo[9]);
   // Check the codec capability length
   losc = *p_codec_info++;
+    //LOG_DEBUG(LOG_TAG, "%s: losc = %d, A2DP_LHDC_CODEC_LEN = %d", __func__, losc, A2DP_LHDC_CODEC_LEN);
   if (losc != A2DP_LHDC_CODEC_LEN) return A2DP_WRONG_CODEC;
 
   media_type = (*p_codec_info++) >> 4;
   codec_type = *p_codec_info++;
+    //LOG_DEBUG(LOG_TAG, "%s: media_type = %d, codec_type = %d", __func__, media_type, codec_type);
   /* Check the Media Type and Media Codec Type */
   if (media_type != AVDT_MEDIA_TYPE_AUDIO ||
       codec_type != A2DP_MEDIA_CT_NON_A2DP) {
@@ -170,14 +180,19 @@ static tA2DP_STATUS A2DP_ParseInfoLhdc(tA2DP_LHDC_CIE* p_ie,
   p_ie->codecId =
       (*p_codec_info & 0x00FF) | (*(p_codec_info + 1) << 8 & 0xFF00);
   p_codec_info += 2;
+    //LOG_DEBUG(LOG_TAG, "%s: p_ie->vendorId = %d, p_ie->codecId = %d", __func__, p_ie->vendorId, p_ie->codecId);
   if (p_ie->vendorId != A2DP_LHDC_VENDOR_ID ||
       p_ie->codecId != A2DP_LHDC_CODEC_ID) {
     return A2DP_WRONG_CODEC;
   }
 
+  //LOG_DEBUG(LOG_TAG, "%s: *p_codec_info = 0x%x", __func__, *p_codec_info);
+
   p_ie->sampleRate = *p_codec_info & A2DP_LHDC_SAMPLING_FREQ_MASK;
 
-  p_ie->sampleRate = A2DP_LHDC_CHANNEL_MODE_STEREO;
+  p_ie->channelMode = A2DP_LHDC_CHANNEL_MODE_STEREO;
+
+  //p_ie->bits_per_sample = *p_codec_info & A2DP_LHDC_BIT_FMT_MASK;
 
   switch (*p_codec_info & A2DP_LHDC_BIT_FMT_MASK) {
   	case A2DP_LHDC_BIT_FMT_24:
@@ -186,15 +201,22 @@ static tA2DP_STATUS A2DP_ParseInfoLhdc(tA2DP_LHDC_CIE* p_ie,
   	case A2DP_LHDC_BIT_FMT_16:
   	  p_ie->bits_per_sample = BTAV_A2DP_CODEC_BITS_PER_SAMPLE_16;
   	break;
+    case A2DP_LHDC_BIT_FMT_MASK:
+  	  p_ie->bits_per_sample = BTAV_A2DP_CODEC_BITS_PER_SAMPLE_16 | BTAV_A2DP_CODEC_BITS_PER_SAMPLE_24;
+    break;
   	default:
+      //LOG_DEBUG(LOG_TAG, "%s: p_codec_info & A2DP_LHDC_BIT_FMT_MASK = %d", __func__, (*p_codec_info & A2DP_LHDC_BIT_FMT_MASK));
   	return A2DP_WRONG_CODEC;
-  }
+}
 
   /*
   p_ie->sampleRate = *p_codec_info++ & A2DP_LHDC_SAMPLING_FREQ_MASK;
   p_ie->channelMode = *p_codec_info++ & A2DP_LHDC_CHANNEL_MODE_MASK;
 
 */
+
+//LOG_DEBUG(LOG_TAG, "%s: codec info = [0]:0x%x, [1]:0x%x, [2]:0x%x, [3]:0x%x, [4]:0x%x, [5]:0x%x, [6]:0x%x",
+ //__func__, tmpInfo[0], tmpInfo[1], tmpInfo[2], tmpInfo[3], tmpInfo[4], tmpInfo[5], tmpInfo[6]);
 
   if (is_capability) return A2DP_SUCCESS;
 
@@ -206,7 +228,7 @@ static tA2DP_STATUS A2DP_ParseInfoLhdc(tA2DP_LHDC_CIE* p_ie,
   return A2DP_SUCCESS;
 }
 
-// Build the LDAC Media Payload Header.
+// Build the LHDC Media Payload Header.
 // |p_dst| points to the location where the header should be written to.
 // If |frag| is true, the media payload frame is fragmented.
 // |start| is true for the first packet of a fragmented frame.
@@ -241,8 +263,8 @@ bool A2DP_IsVendorPeerSinkCodecValidLhdc(const uint8_t* p_codec_info) {
          (A2DP_ParseInfoLhdc(&cfg_cie, p_codec_info, true) == A2DP_SUCCESS);
 }
 
-// Checks whether A2DP LDAC codec configuration matches with a device's codec
-// capabilities. |p_cap| is the LDAC codec configuration. |p_codec_info| is
+// Checks whether A2DP LHDC codec configuration matches with a device's codec
+// capabilities. |p_cap| is the LHDC codec configuration. |p_codec_info| is
 // the device's codec capabilities.
 // If |is_capability| is true, the byte sequence is codec capabilities,
 // otherwise is codec configuration.
@@ -364,6 +386,29 @@ int A2DP_VendorGetTrackSampleRateLhdc(const uint8_t* p_codec_info) {
   return -1;
 }
 
+int A2DP_VendorGetTrackBitsPerSampleLhdc(const uint8_t* p_codec_info) {
+  tA2DP_LHDC_CIE lhdc_cie;
+
+  // Check whether the codec info contains valid data
+  tA2DP_STATUS a2dp_status = A2DP_ParseInfoLhdc(&lhdc_cie, p_codec_info, false);
+  if (a2dp_status != A2DP_SUCCESS) {
+    LOG_ERROR(LOG_TAG, "%s: cannot decode codec information: %d", __func__,
+              a2dp_status);
+    return -1;
+  }
+
+  switch (a2dp_lhdc_caps.bits_per_sample) {
+    case BTAV_A2DP_CODEC_BITS_PER_SAMPLE_16:
+      return 16;
+    case BTAV_A2DP_CODEC_BITS_PER_SAMPLE_24:
+      return 24;
+    case BTAV_A2DP_CODEC_BITS_PER_SAMPLE_NONE:
+    case BTAV_A2DP_CODEC_BITS_PER_SAMPLE_32:
+      break;
+  }
+  return -1;
+}
+
 int A2DP_VendorGetTrackChannelCountLhdc(const uint8_t* p_codec_info) {
   tA2DP_LHDC_CIE lhdc_cie;
 
@@ -477,7 +522,7 @@ btav_a2dp_codec_index_t A2DP_VendorSourceCodecIndexLhdc(
   return BTAV_A2DP_CODEC_INDEX_SOURCE_LHDC;
 }
 
-const char* A2DP_VendorCodecIndexStrLhdc(void) { return "LDAC"; }
+const char* A2DP_VendorCodecIndexStrLhdc(void) { return "LHDC"; }
 
 bool A2DP_VendorInitCodecConfigLhdc(tAVDT_CFG* p_cfg) {
   if (A2DP_BuildInfoLhdc(AVDT_MEDIA_TYPE_AUDIO, &a2dp_lhdc_caps,
@@ -743,6 +788,10 @@ bool A2dpCodecConfigLhdc::setCodecConfig(const uint8_t* p_peer_codec_info,
     goto fail;
   }
 
+    LOG_ERROR(LOG_TAG,
+              "%s",
+              __func__);
+
   //
   // Build the preferred configuration
   //
@@ -754,6 +803,7 @@ bool A2dpCodecConfigLhdc::setCodecConfig(const uint8_t* p_peer_codec_info,
   // Select the sample frequency
   //
   sampleRate = a2dp_lhdc_caps.sampleRate & sink_info_cie.sampleRate;
+  LOG_ERROR(LOG_TAG, "%s: samplrate = 0x%x", __func__, sampleRate);
   codec_config_.sample_rate = BTAV_A2DP_CODEC_SAMPLE_RATE_NONE;
   switch (codec_user_config_.sample_rate) {
     case BTAV_A2DP_CODEC_SAMPLE_RATE_44100:
@@ -842,9 +892,10 @@ bool A2dpCodecConfigLhdc::setCodecConfig(const uint8_t* p_peer_codec_info,
   //
   // Select the bits per sample
   //
-  // NOTE: this information is NOT included in the LDAC A2DP codec description
+  // NOTE: this information is NOT included in the LHDC A2DP codec description
   // that is sent OTA.
   bits_per_sample = a2dp_lhdc_caps.bits_per_sample;
+  LOG_ERROR(LOG_TAG, "%s: bits_per_sample = 0x%x", __func__, bits_per_sample);
   codec_config_.bits_per_sample = BTAV_A2DP_CODEC_BITS_PER_SAMPLE_NONE;
   switch (codec_user_config_.bits_per_sample) {
     case BTAV_A2DP_CODEC_BITS_PER_SAMPLE_16:
@@ -913,6 +964,7 @@ bool A2dpCodecConfigLhdc::setCodecConfig(const uint8_t* p_peer_codec_info,
   // Select the channel mode
   //
   channelMode = a2dp_lhdc_caps.channelMode & sink_info_cie.channelMode;
+  LOG_ERROR(LOG_TAG, "%s: channelMode = 0x%x", __func__, channelMode);
   codec_config_.channel_mode = BTAV_A2DP_CODEC_CHANNEL_MODE_NONE;
   switch (codec_user_config_.channel_mode) {
     case BTAV_A2DP_CODEC_CHANNEL_MODE_STEREO:
@@ -975,8 +1027,9 @@ bool A2dpCodecConfigLhdc::setCodecConfig(const uint8_t* p_peer_codec_info,
     goto fail;
   }
 
-  if (A2DP_BuildInfoLhdc(AVDT_MEDIA_TYPE_AUDIO, &result_config_cie,
+  if (int ret = A2DP_BuildInfoLhdc(AVDT_MEDIA_TYPE_AUDIO, &result_config_cie,
                          p_result_codec_config) != A2DP_SUCCESS) {
+    LOG_ERROR(LOG_TAG,"%s: A2DP_BuildInfoLhdc fail(0x%x)", __func__, ret);
     goto fail;
   }
 
@@ -994,6 +1047,7 @@ bool A2dpCodecConfigLhdc::setCodecConfig(const uint8_t* p_peer_codec_info,
 
   // Create a local copy of the peer codec capability, and the
   // result codec config.
+    LOG_ERROR(LOG_TAG,"%s: is_capability = %d", __func__, is_capability);
   if (is_capability) {
     status = A2DP_BuildInfoLhdc(AVDT_MEDIA_TYPE_AUDIO, &sink_info_cie,
                                 ota_codec_peer_capability_);
@@ -1002,6 +1056,7 @@ bool A2dpCodecConfigLhdc::setCodecConfig(const uint8_t* p_peer_codec_info,
                                 ota_codec_peer_config_);
   }
   CHECK(status == A2DP_SUCCESS);
+
   status = A2DP_BuildInfoLhdc(AVDT_MEDIA_TYPE_AUDIO, &result_config_cie,
                               ota_codec_config_);
   CHECK(status == A2DP_SUCCESS);
