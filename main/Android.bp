@@ -78,6 +78,7 @@ cc_library_shared {
         "libbt-hci",
         "libldacBT_enc",
         "libldacBT_abr",
+        "liblhdcBT_enc",
     ],
     cflags: [
         "-DBUILDCFG",
