@@ -22,14 +22,14 @@
 #define A2DP_VENDOR_LHDC_CONSTANTS_H
 
 // LHDC Quality Mode Index
-#define A2DP_LHDC_QUALITY_HIGH 0  // Equal to LHDCBT_EQMID_HQ 990kbps
-#define A2DP_LHDC_QUALITY_MID 1   // Equal to LHDCBT_EQMID_SQ 660kbps
-#define A2DP_LHDC_QUALITY_LOW 2   // Equal to LHDCBT_EQMID_MQ 330kbps
 //LHDC not supported auto bit rate now.
-//#define A2DP_LHDC_QUALITY_ABR 3   // ABR mode, range: 990,660,492,396,330(kbps)
+#define A2DP_LHDC_QUALITY_ABR 3   // ABR mode, range: 990,660,492,396,330(kbps)
+#define A2DP_LHDC_QUALITY_HIGH 2  // Equal to LHDCBT_EQMID_HQ 900kbps
+#define A2DP_LHDC_QUALITY_MID 1   // Equal to LHDCBT_EQMID_SQ 500/560kbps
+#define A2DP_LHDC_QUALITY_LOW 0   // Equal to LHDCBT_EQMID_MQ 400kbps
 
 // Length of the LHDC Media Payload header
-#define A2DP_LHDC_MPL_HDR_LEN 1
+#define A2DP_LHDC_MPL_HDR_LEN 2
 
 // LHDC Media Payload Header
 #define A2DP_LHDC_HDR_F_MSK 0x80

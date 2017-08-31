@@ -51,11 +51,13 @@ static const tA2DP_LHDC_CIE a2dp_lhdc_caps = {
     A2DP_LHDC_VENDOR_ID,  // vendorId
     A2DP_LHDC_CODEC_ID,   // codecId
     // sampleRate
+    //(A2DP_LHDC_SAMPLING_FREQ_48000),
     (A2DP_LHDC_SAMPLING_FREQ_44100 | A2DP_LHDC_SAMPLING_FREQ_48000 | A2DP_LHDC_SAMPLING_FREQ_96000),
     // channelMode
     (A2DP_LHDC_CHANNEL_MODE_STEREO),
     // bits_per_sample
     (BTAV_A2DP_CODEC_BITS_PER_SAMPLE_16 | BTAV_A2DP_CODEC_BITS_PER_SAMPLE_24)};
+    //(BTAV_A2DP_CODEC_BITS_PER_SAMPLE_16)};
 
 /* Default LHDC codec configuration */
 static const tA2DP_LHDC_CIE a2dp_lhdc_default_config = {
@@ -63,7 +65,7 @@ static const tA2DP_LHDC_CIE a2dp_lhdc_default_config = {
     A2DP_LHDC_CODEC_ID,                 // codecId
     A2DP_LHDC_SAMPLING_FREQ_96000,      // sampleRate
     A2DP_LHDC_CHANNEL_MODE_STEREO,      // channelMode
-    BTAV_A2DP_CODEC_BITS_PER_SAMPLE_32  // bits_per_sample
+    BTAV_A2DP_CODEC_BITS_PER_SAMPLE_24  // bits_per_sample
 };
 
 static const tA2DP_ENCODER_INTERFACE a2dp_encoder_interface_lhdc = {
@@ -105,16 +107,7 @@ static tA2DP_STATUS A2DP_BuildInfoLhdc(uint8_t media_type,
   *p_result++ = (uint8_t)(p_ie->codecId & 0x00FF);
   *p_result++ = (uint8_t)((p_ie->codecId & 0xFF00) >> 8);
 
-  // Sampling Frequency
-  /*
-  *p_result = (uint8_t)(p_ie->sampleRate & A2DP_LHDC_SAMPLING_FREQ_MASK);
-  if (*p_result == 0) return A2DP_INVALID_PARAMS;
-  p_result++;
-
-  // Channel Mode
-  *p_result = (uint8_t)(p_ie->channelMode & A2DP_LHDC_CHANNEL_MODE_MASK);
-  if (*p_result == 0) return A2DP_INVALID_PARAMS;
-  */
+  // Sampling Frequency & Bits per sample
   uint8_t para = 0;
 
   // sample rate bit0 ~ bit2
@@ -235,16 +228,11 @@ static tA2DP_STATUS A2DP_ParseInfoLhdc(tA2DP_LHDC_CIE* p_ie,
 // |last| is true for the last packet of a fragmented frame.
 // If |frag| is false, |num| is the number of number of frames in the packet,
 // otherwise is the number of remaining fragments (including this one).
-static void A2DP_BuildMediaPayloadHeaderLhdc(uint8_t* p_dst, bool frag,
-                                             bool start, bool last,
-                                             uint8_t num) {
-  if (p_dst == NULL) return;
+static void A2DP_BuildMediaPayloadHeaderLhdc(uint8_t* p, uint16_t num) {
+  if (p == NULL) return;
 
-  *p_dst = 0;
-  if (frag) *p_dst |= A2DP_LHDC_HDR_F_MSK;
-  if (start) *p_dst |= A2DP_LHDC_HDR_S_MSK;
-  if (last) *p_dst |= A2DP_LHDC_HDR_L_MSK;
-  *p_dst |= (A2DP_LHDC_HDR_NUM_MSK & num);
+  p[0] = ( uint8_t)( num & 0xff);
+  p[1] = ( uint8_t)( ( num >> 8) & 0xff);
 }
 
 bool A2DP_IsVendorSourceCodecValidLhdc(const uint8_t* p_codec_info) {
@@ -465,9 +453,7 @@ bool A2DP_VendorBuildCodecHeaderLhdc(UNUSED_ATTR const uint8_t* p_codec_info,
   p_buf->offset -= A2DP_LHDC_MPL_HDR_LEN;
   p = (uint8_t*)(p_buf + 1) + p_buf->offset;
   p_buf->len += A2DP_LHDC_MPL_HDR_LEN;
-  A2DP_BuildMediaPayloadHeaderLhdc(p, false, false, false,
-                                   (uint8_t)frames_per_packet);
-
+  A2DP_BuildMediaPayloadHeaderLhdc(p, frames_per_packet);
   return true;
 }
 
