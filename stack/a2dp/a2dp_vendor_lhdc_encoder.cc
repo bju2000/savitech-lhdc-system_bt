@@ -60,6 +60,8 @@ typedef void (*tLHDC_FREE_HANDLE)(HANDLE_LHDC_BT hLhdcParam);
 
 static const char* LHDC_GET_BITRATE_NAME = "lhdcBT_get_bitrate";
 typedef int (*tLHDC_GET_BITRATE)(HANDLE_LHDC_BT hLhdcParam);
+static const char* LHDC_SET_BITRATE_NAME = "lhdcBT_set_bitrate";
+typedef int (*tLHDC_SET_BITRATE)(HANDLE_LHDC_BT hLhdcParam, int index);
 
 static const char* LHDC_GET_SAMPLING_FREQ_NAME = "lhdcBT_get_sampling_freq";
 typedef int (*tLHDC_GET_SAMPLING_FREQ)(HANDLE_LHDC_BT hLhdcParam);
@@ -89,6 +91,7 @@ static tLHDC_FREE_HANDLE lhdc_free_handle_func;
 //static tLHDC_CLOSE_HANDLE lhdc_close_handle_func;
 //static tLHDC_GET_VERSION lhdc_get_version_func;
 static tLHDC_GET_BITRATE lhdc_get_bitrate_func;
+static tLHDC_SET_BITRATE lhdc_set_bitrate_func;
 static tLHDC_GET_SAMPLING_FREQ lhdc_get_sampling_freq_func;
 static tLHDC_INIT_HANDLE_ENCODE lhdc_init_handle_encode_func;
 static tLHDC_ENCODE lhdc_encode_func;
@@ -115,6 +118,7 @@ typedef struct {
   uint8_t channel_mode;
   uint8_t bits_per_sample;
   int quality_mode_index;
+  int latency_mode_index;
   int pcm_wlength;
   LHDCBT_SMPL_FMT_T pcm_fmt;
 } tA2DP_LHDC_ENCODER_PARAMS;
@@ -218,6 +222,8 @@ bool A2DP_VendorLoadEncoderLhdc(void) {
   //if (lhdc_get_version_func == NULL) return false;
   lhdc_get_bitrate_func = (tLHDC_GET_BITRATE)load_func(LHDC_GET_BITRATE_NAME);
   if (lhdc_get_bitrate_func == NULL) return false;
+  lhdc_set_bitrate_func = (tLHDC_SET_BITRATE)load_func(LHDC_SET_BITRATE_NAME);
+  if (lhdc_set_bitrate_func == NULL) return false;
   lhdc_get_sampling_freq_func =
       (tLHDC_GET_SAMPLING_FREQ)load_func(LHDC_GET_SAMPLING_FREQ_NAME);
   if (lhdc_get_sampling_freq_func == NULL) return false;
@@ -234,6 +240,7 @@ bool A2DP_VendorLoadEncoderLhdc(void) {
   //if (lhdc_get_eqmid_func == NULL) return false;
   lhdc_get_error_code_func = (tLHDC_GET_ERROR_CODE)load_func(LHDC_GET_ERROR_CODE_NAME);
   if (lhdc_get_error_code_func == NULL) return false;
+
 /*
   if (!A2DP_VendorLoadLhdcAbr()) {
     LOG_WARN(LOG_TAG, "%s: cannot load the LHDC ABR library", __func__);
@@ -259,6 +266,7 @@ void A2DP_VendorUnloadEncoderLhdc(void) {
   //lhdc_close_handle_func = NULL;
   //lhdc_get_version_func = NULL;
   lhdc_get_bitrate_func = NULL;
+  lhdc_set_bitrate_func = NULL;
   lhdc_get_sampling_freq_func = NULL;
   lhdc_init_handle_encode_func = NULL;
   lhdc_encode_func = NULL;
@@ -393,11 +401,31 @@ static void a2dp_vendor_lhdc_encoder_update(uint16_t peer_mtu,
 
   // Set the quality mode index
   //int old_quality_mode_index = p_encoder_params->quality_mode_index;
-  if (codec_config.codec_specific_1 != 0) {
-    p_encoder_params->quality_mode_index = codec_config.codec_specific_1 & ~0xf;
-    LOG_DEBUG(LOG_TAG, "%s: setting quality mode to %s", __func__,
-              quality_mode_index_to_name(p_encoder_params->quality_mode_index)
-                  .c_str());
+  LOG_DEBUG(LOG_TAG, "%s:codec_config.codec_specific_1 = %d, codec_config.codec_specific_2 = %d", __func__, (int32_t)codec_config.codec_specific_1, (int32_t)codec_config.codec_specific_2);
+  if ((codec_config.codec_specific_1 & A2DP_LHDC_VENDOR_CMD_MASK) == A2DP_LDHC_QUALITY_MAGIC_NUM) {
+      //int newValue = codec_config.codec_specific_1 & 0xff;
+      int newValue = codec_config.codec_specific_1 & 0xff;
+      if (newValue != p_encoder_params->quality_mode_index) {
+
+        p_encoder_params->quality_mode_index = newValue;
+        LOG_DEBUG(LOG_TAG, "%s: setting quality mode to %s(%d)", __func__,
+                  quality_mode_index_to_name(p_encoder_params->quality_mode_index)
+                      .c_str(), p_encoder_params->quality_mode_index);
+
+         lhdc_set_bitrate_func(a2dp_lhdc_encoder_cb.lhdc_handle, p_encoder_params->quality_mode_index);
+      }
+  }
+
+  //p_encoder_params->latency_mode_index = 1;
+  if ((codec_config.codec_specific_2 & A2DP_LHDC_VENDOR_CMD_MASK) == A2DP_LHDC_LATENCY_MAGIC_NUM) {
+      int newValue = codec_config.codec_specific_2 & 0xff;
+      if (newValue != p_encoder_params->latency_mode_index) {
+          /* code */
+          p_encoder_params->latency_mode_index = newValue;
+          LOG_DEBUG(LOG_TAG, "%s: setting latency value to %d", __func__, p_encoder_params->latency_mode_index);
+      }
+  }else {
+      p_encoder_params->latency_mode_index = 1;
   }
 
   p_encoder_params->pcm_wlength =
@@ -557,6 +585,8 @@ static BT_HDR *bt_buf_new( void) {
 
 static void a2dp_lhdc_encode_frames(uint8_t nb_frame) {
     BT_HDR * p_buf;
+    tA2DP_LHDC_ENCODER_PARAMS* p_encoder_params =
+        &a2dp_lhdc_encoder_cb.lhdc_encoder_params;
     uint32_t pcm_bytes_per_frame = LHDCBT_ENC_BLOCK_SIZE *
                                  a2dp_lhdc_encoder_cb.feeding_params.channel_count *
                                  a2dp_lhdc_encoder_cb.feeding_params.bits_per_sample / 8;
@@ -570,7 +600,7 @@ static void a2dp_lhdc_encode_frames(uint8_t nb_frame) {
 
     uint8_t read_buffer[pcm_bytes_per_frame];
     uint8_t write_buffer[pcm_bytes_per_frame];
-    uint8_t latency = 0;
+    uint8_t latency = p_encoder_params->latency_mode_index;
     int out_offset = 0;
     int out_len = 0;
     uint32_t fragments = 0;
@@ -587,7 +617,7 @@ static void a2dp_lhdc_encode_frames(uint8_t nb_frame) {
 
         out_offset = 0;
         out_len = lhdc_encode_func(a2dp_lhdc_encoder_cb.lhdc_handle, read_buffer, write_buffer);
-        
+
         nb_frame--;
 
         // calculate fragments
@@ -737,8 +767,8 @@ static bool a2dp_lhdc_read_feeding(uint8_t* read_buffer) {
   /* Read Data from UIPC channel */
   uint32_t nb_byte_read =
       a2dp_lhdc_encoder_cb.read_callback(read_buffer, read_size);
-  LOG_DEBUG(LOG_TAG, "%s: want to read size %u, read byte number %u",
-                    __func__, read_size, nb_byte_read);
+  //LOG_DEBUG(LOG_TAG, "%s: want to read size %u, read byte number %u",
+//                    __func__, read_size, nb_byte_read);
   a2dp_lhdc_encoder_cb.stats.media_read_total_actual_read_bytes += nb_byte_read;
 
   if (nb_byte_read < read_size) {

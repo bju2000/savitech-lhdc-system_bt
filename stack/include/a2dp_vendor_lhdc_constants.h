@@ -21,12 +21,20 @@
 #ifndef A2DP_VENDOR_LHDC_CONSTANTS_H
 #define A2DP_VENDOR_LHDC_CONSTANTS_H
 
+#define A2DP_LHDC_VENDOR_CMD_MASK    0xC000
+
 // LHDC Quality Mode Index
 //LHDC not supported auto bit rate now.
+#define A2DP_LDHC_QUALITY_MAGIC_NUM 0x8000
 #define A2DP_LHDC_QUALITY_ABR 3   // ABR mode, range: 990,660,492,396,330(kbps)
 #define A2DP_LHDC_QUALITY_HIGH 2  // Equal to LHDCBT_EQMID_HQ 900kbps
 #define A2DP_LHDC_QUALITY_MID 1   // Equal to LHDCBT_EQMID_SQ 500/560kbps
 #define A2DP_LHDC_QUALITY_LOW 0   // Equal to LHDCBT_EQMID_MQ 400kbps
+
+#define A2DP_LHDC_LATENCY_MAGIC_NUM 0xC000
+#define A2DP_LHDC_LATENCY_LOW	0	// 50-100 ms
+#define A2DP_LHDC_LATENCY_MID	1	// default value, 150-200 ms
+#define A2DP_LHDC_LATENCY_HIGH	2	// 300-500 ms
 
 // Length of the LHDC Media Payload header
 #define A2DP_LHDC_MPL_HDR_LEN 2
@@ -60,5 +68,6 @@
 #define A2DP_LHDC_CHANNEL_MODE_MONO 0x04
 #define A2DP_LHDC_CHANNEL_MODE_DUAL 0x02
 #define A2DP_LHDC_CHANNEL_MODE_STEREO 0x01
+
 
 #endif  // A2DP_VENDOR_LHDC_CONSTANTS_H
