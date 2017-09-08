@@ -31,6 +31,8 @@ static_library("stack") {
     "a2dp/a2dp_vendor_ldac.cc",
     "a2dp/a2dp_vendor_ldac_abr.cc",
     "a2dp/a2dp_vendor_ldac_encoder.cc",
+    "a2dp/a2dp_vendor_lhdc.cc",
+    "a2dp/a2dp_vendor_lhdc_encoder.cc",
     "avct/avct_api.cc",
     "avct/avct_bcb_act.cc",
     "avct/avct_ccb.cc",
@@ -183,6 +185,7 @@ static_library("stack") {
     "//third_party/libchrome:base",
     "//third_party/libldac:libldacBT_enc",
     "//third_party/libldac:libldacBT_abr",
+    "//third_party/liblhdc:liblhdcBT_enc",
     "//third_party/aac:libFraunhoferAAC",
   ]
 }
@@ -263,4 +266,3 @@ libs = [
     "//third_party/libchrome:base",
   ]
 }
-
