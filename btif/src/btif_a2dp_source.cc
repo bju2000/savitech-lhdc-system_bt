@@ -51,7 +51,7 @@ using system_bt_osi::A2dpSessionMetrics;
  * but due to link flow control or thread preemption in lower
  * layers we might need to temporarily buffer up data.
  */
-#define MAX_OUTPUT_A2DP_FRAME_QUEUE_SZ (MAX_PCM_FRAME_NUM_PER_TICK * 2)
+#define MAX_OUTPUT_A2DP_FRAME_QUEUE_SZ (MAX_PCM_FRAME_NUM_PER_TICK * 6)
 
 enum {
   BTIF_A2DP_SOURCE_STATE_OFF,
