@@ -153,6 +153,7 @@ const uint8_t codec_info_non_a2dp_dummy[AVDT_CODEC_SIZE] = {
 static const char* APTX_ENCODER_LIB_NAME = "libaptX_encoder.so";
 static const char* APTX_HD_ENCODER_LIB_NAME = "libaptXHD_encoder.so";
 static const char* LDAC_ENCODER_LIB_NAME = "libldacBT_enc.so";
+static const char*LHDC_ENCODER_LIB_NAME = "liblhdcBT_enc.so";
 
 static bool has_shared_library(const char* name) {
   void* lib_handle = dlopen(name, RTLD_NOW);
@@ -196,6 +197,11 @@ class StackA2dpTest : public ::testing::Test {
           // Codec LDAC is supported only if the device has the corresponding
           // shared library installed.
           supported = has_shared_library(LDAC_ENCODER_LIB_NAME);
+          break;
+        case BTAV_A2DP_CODEC_INDEX_SOURCE_LHDC:
+          // Codec LDAC is supported only if the device has the corresponding
+          // shared library installed.
+          supported = has_shared_library(LHDC_ENCODER_LIB_NAME);
           break;
         case BTAV_A2DP_CODEC_INDEX_SINK_SBC:
           supported = true;

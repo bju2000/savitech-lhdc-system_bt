@@ -52,7 +52,7 @@ static const tA2DP_LHDC_CIE a2dp_lhdc_caps = {
     A2DP_LHDC_CODEC_ID,   // codecId
     // sampleRate
     //(A2DP_LHDC_SAMPLING_FREQ_48000),
-    (A2DP_LHDC_SAMPLING_FREQ_44100 | A2DP_LHDC_SAMPLING_FREQ_48000 | A2DP_LHDC_SAMPLING_FREQ_96000),
+    (A2DP_LHDC_SAMPLING_FREQ_44100 | A2DP_LHDC_SAMPLING_FREQ_48000 | A2DP_LHDC_SAMPLING_FREQ_88200 | A2DP_LHDC_SAMPLING_FREQ_96000),
     // channelMode
     (A2DP_LHDC_CHANNEL_MODE_STEREO),
     // bits_per_sample
@@ -228,12 +228,12 @@ static tA2DP_STATUS A2DP_ParseInfoLhdc(tA2DP_LHDC_CIE* p_ie,
 // |last| is true for the last packet of a fragmented frame.
 // If |frag| is false, |num| is the number of number of frames in the packet,
 // otherwise is the number of remaining fragments (including this one).
+/*
 static void A2DP_BuildMediaPayloadHeaderLhdc(uint8_t* p, uint16_t num) {
   if (p == NULL) return;
-
-  p[0] = ( uint8_t)( num & 0xff);
-  p[1] = ( uint8_t)( ( num >> 8) & 0xff);
+  *p = ( uint8_t)( num & 0xff);
 }
+*/
 
 bool A2DP_IsVendorSourceCodecValidLhdc(const uint8_t* p_codec_info) {
   tA2DP_LHDC_CIE cfg_cie;
@@ -351,6 +351,7 @@ bool A2DP_VendorCodecEqualsLhdc(const uint8_t* p_codec_info_a,
          (lhdc_cie_a.bits_per_sample == lhdc_cie_b.bits_per_sample);
 }
 
+
 int A2DP_VendorGetTrackSampleRateLhdc(const uint8_t* p_codec_info) {
   tA2DP_LHDC_CIE lhdc_cie;
 
@@ -367,6 +368,8 @@ int A2DP_VendorGetTrackSampleRateLhdc(const uint8_t* p_codec_info) {
       return 44100;
     case A2DP_LHDC_SAMPLING_FREQ_48000:
       return 48000;
+    case A2DP_LHDC_SAMPLING_FREQ_88200:
+      return 88200;
     case A2DP_LHDC_SAMPLING_FREQ_96000:
       return 96000;
   }
@@ -453,7 +456,8 @@ bool A2DP_VendorBuildCodecHeaderLhdc(UNUSED_ATTR const uint8_t* p_codec_info,
   p_buf->offset -= A2DP_LHDC_MPL_HDR_LEN;
   p = (uint8_t*)(p_buf + 1) + p_buf->offset;
   p_buf->len += A2DP_LHDC_MPL_HDR_LEN;
-  A2DP_BuildMediaPayloadHeaderLhdc(p, frames_per_packet);
+  *p = ( uint8_t)( frames_per_packet & 0xff);
+  //A2DP_BuildMediaPayloadHeaderLhdc(p, frames_per_packet);
   return true;
 }
 
@@ -475,6 +479,9 @@ void A2DP_VendorDumpCodecInfoLhdc(const uint8_t* p_codec_info) {
   }
   if (lhdc_cie.sampleRate & A2DP_LHDC_SAMPLING_FREQ_48000) {
     LOG_DEBUG(LOG_TAG, "\tsamp_freq: (48000)");
+  }
+  if (lhdc_cie.sampleRate & A2DP_LHDC_SAMPLING_FREQ_88200) {
+    LOG_DEBUG(LOG_TAG, "\tsamp_freq: (88200)");
   }
   if (lhdc_cie.sampleRate & A2DP_LHDC_SAMPLING_FREQ_96000) {
     LOG_DEBUG(LOG_TAG, "\tsamp_freq: (96000)");
@@ -533,6 +540,8 @@ UNUSED_ATTR static void build_codec_config(const tA2DP_LHDC_CIE& config_cie,
     result->sample_rate |= BTAV_A2DP_CODEC_SAMPLE_RATE_44100;
   if (config_cie.sampleRate & A2DP_LHDC_SAMPLING_FREQ_48000)
     result->sample_rate |= BTAV_A2DP_CODEC_SAMPLE_RATE_48000;
+  if (config_cie.sampleRate & A2DP_LHDC_SAMPLING_FREQ_88200)
+    result->sample_rate |= BTAV_A2DP_CODEC_SAMPLE_RATE_88200;
   if (config_cie.sampleRate & A2DP_LHDC_SAMPLING_FREQ_96000)
     result->sample_rate |= BTAV_A2DP_CODEC_SAMPLE_RATE_96000;
 
@@ -554,6 +563,9 @@ A2dpCodecConfigLhdc::A2dpCodecConfigLhdc(
   }
   if (a2dp_lhdc_caps.sampleRate & A2DP_LHDC_SAMPLING_FREQ_48000) {
     codec_local_capability_.sample_rate |= BTAV_A2DP_CODEC_SAMPLE_RATE_48000;
+  }
+  if (a2dp_lhdc_caps.sampleRate & A2DP_LHDC_SAMPLING_FREQ_88200) {
+    codec_local_capability_.sample_rate |= BTAV_A2DP_CODEC_SAMPLE_RATE_88200;
   }
   if (a2dp_lhdc_caps.sampleRate & A2DP_LHDC_SAMPLING_FREQ_96000) {
     codec_local_capability_.sample_rate |= BTAV_A2DP_CODEC_SAMPLE_RATE_96000;
@@ -593,6 +605,11 @@ static bool select_best_sample_rate(uint8_t sampleRate,
     p_codec_config->sample_rate = BTAV_A2DP_CODEC_SAMPLE_RATE_96000;
     return true;
   }
+  if (sampleRate & A2DP_LHDC_SAMPLING_FREQ_88200) {
+    p_result->sampleRate = A2DP_LHDC_SAMPLING_FREQ_88200;
+    p_codec_config->sample_rate = BTAV_A2DP_CODEC_SAMPLE_RATE_88200;
+    return true;
+  }
   if (sampleRate & A2DP_LHDC_SAMPLING_FREQ_48000) {
     p_result->sampleRate = A2DP_LHDC_SAMPLING_FREQ_48000;
     p_codec_config->sample_rate = BTAV_A2DP_CODEC_SAMPLE_RATE_48000;
@@ -630,6 +647,13 @@ static bool select_audio_sample_rate(
         return true;
       }
       break;
+    case BTAV_A2DP_CODEC_SAMPLE_RATE_88200:
+      if (sampleRate & A2DP_LHDC_SAMPLING_FREQ_88200) {
+        p_result->sampleRate = A2DP_LHDC_SAMPLING_FREQ_88200;
+        p_codec_config->sample_rate = BTAV_A2DP_CODEC_SAMPLE_RATE_88200;
+        return true;
+      }
+      break;
     case BTAV_A2DP_CODEC_SAMPLE_RATE_96000:
       if (sampleRate & A2DP_LHDC_SAMPLING_FREQ_96000) {
         p_result->sampleRate = A2DP_LHDC_SAMPLING_FREQ_96000;
@@ -637,7 +661,6 @@ static bool select_audio_sample_rate(
         return true;
       }
       break;
-    case BTAV_A2DP_CODEC_SAMPLE_RATE_88200:
     case BTAV_A2DP_CODEC_SAMPLE_RATE_176400:
     case BTAV_A2DP_CODEC_SAMPLE_RATE_192000:
     case BTAV_A2DP_CODEC_SAMPLE_RATE_NONE:
@@ -806,6 +829,13 @@ bool A2dpCodecConfigLhdc::setCodecConfig(const uint8_t* p_peer_codec_info,
         codec_config_.sample_rate = codec_user_config_.sample_rate;
       }
       break;
+    case BTAV_A2DP_CODEC_SAMPLE_RATE_88200:
+      if (sampleRate & A2DP_LHDC_SAMPLING_FREQ_88200) {
+        result_config_cie.sampleRate = A2DP_LHDC_SAMPLING_FREQ_88200;
+        codec_capability_.sample_rate = codec_user_config_.sample_rate;
+        codec_config_.sample_rate = codec_user_config_.sample_rate;
+      }
+      break;
     case BTAV_A2DP_CODEC_SAMPLE_RATE_96000:
       if (sampleRate & A2DP_LHDC_SAMPLING_FREQ_96000) {
         result_config_cie.sampleRate = A2DP_LHDC_SAMPLING_FREQ_96000;
@@ -813,7 +843,6 @@ bool A2dpCodecConfigLhdc::setCodecConfig(const uint8_t* p_peer_codec_info,
         codec_config_.sample_rate = codec_user_config_.sample_rate;
       }
       break;
-    case BTAV_A2DP_CODEC_SAMPLE_RATE_88200:
     case BTAV_A2DP_CODEC_SAMPLE_RATE_176400:
     case BTAV_A2DP_CODEC_SAMPLE_RATE_192000:
     case BTAV_A2DP_CODEC_SAMPLE_RATE_NONE:
@@ -833,6 +862,10 @@ bool A2dpCodecConfigLhdc::setCodecConfig(const uint8_t* p_peer_codec_info,
       codec_selectable_capability_.sample_rate |=
           BTAV_A2DP_CODEC_SAMPLE_RATE_48000;
     }
+    if (sampleRate & A2DP_LHDC_SAMPLING_FREQ_88200) {
+      codec_selectable_capability_.sample_rate |=
+          BTAV_A2DP_CODEC_SAMPLE_RATE_88200;
+    }
     if (sampleRate & A2DP_LHDC_SAMPLING_FREQ_96000) {
       codec_selectable_capability_.sample_rate |=
           BTAV_A2DP_CODEC_SAMPLE_RATE_96000;
@@ -845,6 +878,8 @@ bool A2dpCodecConfigLhdc::setCodecConfig(const uint8_t* p_peer_codec_info,
       codec_capability_.sample_rate |= BTAV_A2DP_CODEC_SAMPLE_RATE_44100;
     if (sampleRate & A2DP_LHDC_SAMPLING_FREQ_48000)
       codec_capability_.sample_rate |= BTAV_A2DP_CODEC_SAMPLE_RATE_48000;
+    if (sampleRate & A2DP_LHDC_SAMPLING_FREQ_88200)
+      codec_capability_.sample_rate |= BTAV_A2DP_CODEC_SAMPLE_RATE_88200;
     if (sampleRate & A2DP_LHDC_SAMPLING_FREQ_96000)
       codec_capability_.sample_rate |= BTAV_A2DP_CODEC_SAMPLE_RATE_96000;
 

@@ -37,7 +37,7 @@
 #define A2DP_LHDC_LATENCY_HIGH	2	// 300-500 ms
 
 // Length of the LHDC Media Payload header
-#define A2DP_LHDC_MPL_HDR_LEN 2
+#define A2DP_LHDC_MPL_HDR_LEN 1
 
 // LHDC Media Payload Header
 #define A2DP_LHDC_HDR_F_MSK 0x80
@@ -59,16 +59,17 @@
 #define A2DP_LHDC_VENDOR_ID 0x0000053a
 // [Octet 4-5] Vendor Specific Codec ID
 #define A2DP_LHDC_CODEC_ID 0x484C
-// [Octet 6], [Bits 0-2] Sampling Frequency
-#define A2DP_LHDC_SAMPLING_FREQ_MASK 0x07
-#define A2DP_LHDC_SAMPLING_FREQ_44100 0x04
-#define A2DP_LHDC_SAMPLING_FREQ_48000 0x02
+// [Octet 6], [Bits 0-3] Sampling Frequency
+#define A2DP_LHDC_SAMPLING_FREQ_MASK 0x0F
+#define A2DP_LHDC_SAMPLING_FREQ_44100 0x08
+#define A2DP_LHDC_SAMPLING_FREQ_48000 0x04
+#define A2DP_LHDC_SAMPLING_FREQ_88200 0x02
 #define A2DP_LHDC_SAMPLING_FREQ_96000 0x01
 
 // [Octet 6], [Bits 3-4] Bit dipth
-#define A2DP_LHDC_BIT_FMT_MASK 	 0x18
-#define A2DP_LHDC_BIT_FMT_24	 0x08
-#define A2DP_LHDC_BIT_FMT_16	 0x10
+#define A2DP_LHDC_BIT_FMT_MASK 	 0x30
+#define A2DP_LHDC_BIT_FMT_24	 0x10
+#define A2DP_LHDC_BIT_FMT_16	 0x20
 
 
 
