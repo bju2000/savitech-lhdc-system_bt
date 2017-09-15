@@ -202,8 +202,6 @@ const char* A2DP_VendorCodecName(UNUSED_ATTR const uint8_t* p_codec_info) {
   uint32_t vendor_id = A2DP_VendorCodecGetVendorId(p_codec_info);
   uint16_t codec_id = A2DP_VendorCodecGetCodecId(p_codec_info);
 
-    //LOG_DEBUG(LOG_TAG, "%s: vendor id = 0x%04x", __func__, vendor_id);
-    //LOG_DEBUG(LOG_TAG, "%s: codec id = 0x%04x", __func__, codec_id);
   // Check for aptX
   if (vendor_id == A2DP_APTX_VENDOR_ID &&
       codec_id == A2DP_APTX_CODEC_ID_BLUETOOTH) {
@@ -226,7 +224,6 @@ const char* A2DP_VendorCodecName(UNUSED_ATTR const uint8_t* p_codec_info) {
     return A2DP_VendorCodecNameLhdc(p_codec_info);
   }
 
-  LOG_DEBUG(LOG_TAG, "%s: Unknown (c_id:0x%x, v_id:0x%x)", __func__, codec_id, vendor_id);
   // Add checks based on <vendor_id, codec_id>
 
   return "UNKNOWN VENDOR CODEC";
