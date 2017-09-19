@@ -666,6 +666,8 @@ static void a2dp_lhdc_encode_frames(uint8_t nb_frame) {
     if ( bt_buf_num == 1) {
         p_buf = p_btBufs[0];
 
+        p_buf->layer_specific = a2dp_lhdc_encoder_cb.buf_seq++;
+        p_buf->layer_specific <<= 8;
         p_buf->layer_specific |= ( latency | ( nb_frame_org << A2DP_LHDC_HDR_NUM_SHIFT));
 
         *( ( uint32_t*)( p_buf + 1)) = a2dp_lhdc_encoder_cb.timestamp;
@@ -679,6 +681,8 @@ static void a2dp_lhdc_encode_frames(uint8_t nb_frame) {
         for( i = 0; i < bt_buf_num; i++) {
             p_buf = p_btBufs[i];
 
+            p_buf->layer_specific = a2dp_lhdc_encoder_cb.buf_seq++;
+            p_buf->layer_specific <<= 8;
             p_buf->layer_specific |= ( A2DP_LHDC_HDR_F_MSK | latency);
 
             if ( i == 0) {
@@ -688,6 +692,7 @@ static void a2dp_lhdc_encode_frames(uint8_t nb_frame) {
             }
 
             *( ( uint32_t*)( p_buf + 1)) = a2dp_lhdc_encoder_cb.timestamp;
+
             a2dp_lhdc_encoder_cb.enqueue_callback( p_buf, 1);
         }
     }

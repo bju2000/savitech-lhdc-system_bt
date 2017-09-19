@@ -37,7 +37,7 @@
 #define A2DP_LHDC_LATENCY_HIGH	2	// 300-500 ms
 
 // Length of the LHDC Media Payload header
-#define A2DP_LHDC_MPL_HDR_LEN 1
+#define A2DP_LHDC_MPL_HDR_LEN 2
 
 // LHDC Media Payload Header
 #define A2DP_LHDC_HDR_F_MSK 0x80

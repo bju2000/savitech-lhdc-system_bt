@@ -456,7 +456,8 @@ bool A2DP_VendorBuildCodecHeaderLhdc(UNUSED_ATTR const uint8_t* p_codec_info,
   p_buf->offset -= A2DP_LHDC_MPL_HDR_LEN;
   p = (uint8_t*)(p_buf + 1) + p_buf->offset;
   p_buf->len += A2DP_LHDC_MPL_HDR_LEN;
-  *p = ( uint8_t)( frames_per_packet & 0xff);
+  p[0] = ( uint8_t)( frames_per_packet & 0xff);
+  p[1] = ( uint8_t)( ( frames_per_packet >> 8) & 0xff);
   //A2DP_BuildMediaPayloadHeaderLhdc(p, frames_per_packet);
   return true;
 }
