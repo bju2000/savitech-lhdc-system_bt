@@ -77,6 +77,9 @@ typedef int (*tLHDC_AUTO_ADJUST_BITRATE)(HANDLE_LHDC_BT hLhdcParam, size_t queue
 static const char* LHDC_ENCODE_NAME = "lhdcBT_encode";
 typedef int (*tLHDC_ENCODE)(HANDLE_LHDC_BT hLhdcParam, void* p_pcm, unsigned char* p_stream);
 
+static const char* LHDC_SET_LIMIT_BITRATE_ENABLED_NAME = "lhdcBT_setLimitBitRateEnabled";
+typedef void (*tLHDC_SET_LIMIT_BITRATE_ENABLED)(HANDLE_LHDC_BT hLhdcParam, int enabled);
+
 //static const char* LHDC_SET_EQMID_NAME = "lhdcBT_set_eqmid";
 //typedef int (*tLHDC_SET_EQMID)(HANDLE_LHDC_BT hLhdcParam, int eqmid);
 
@@ -102,6 +105,7 @@ static tLHDC_INIT_HANDLE_ENCODE lhdc_init_handle_encode_func;
 static tLHDC_ENCODE lhdc_encode_func;
 static tLHDC_AUTO_ADJUST_BITRATE lhdc_auto_adjust_bitrate_func;
 static tLHDC_GET_ERROR_CODE lhdc_get_error_code_func;
+static tLHDC_SET_LIMIT_BITRATE_ENABLED lhdc_set_limit_bitrate_enabled;
 
 // A2DP LHDC encoder interval in milliseconds
 #define A2DP_LHDC_ENCODER_INTERVAL_MS 20
@@ -244,6 +248,11 @@ bool A2DP_VendorLoadEncoderLhdc(void) {
   //if (lhdc_get_eqmid_func == NULL) return false;
   lhdc_get_error_code_func = (tLHDC_GET_ERROR_CODE)load_func(LHDC_GET_ERROR_CODE_NAME);
   if (lhdc_get_error_code_func == NULL) return false;
+  
+  
+  lhdc_set_limit_bitrate_enabled = (tLHDC_SET_LIMIT_BITRATE_ENABLED)load_func(LHDC_SET_LIMIT_BITRATE_ENABLED_NAME);
+  if (lhdc_set_limit_bitrate_enabled == NULL) return false;
+  
 
 /*
   if (!A2DP_VendorLoadLhdcAbr()) {
@@ -278,6 +287,7 @@ void A2DP_VendorUnloadEncoderLhdc(void) {
   //lhdc_alter_eqmid_priority_func = NULL;
   //lhdc_get_eqmid_func = NULL;
   lhdc_get_error_code_func = NULL;
+  lhdc_set_limit_bitrate_enabled = NULL;
 
   if (lhdc_encoder_lib_handle != NULL) {
     dlclose(lhdc_encoder_lib_handle);
@@ -366,6 +376,9 @@ static void a2dp_vendor_lhdc_encoder_update(uint16_t peer_mtu,
     }
     a2dp_lhdc_encoder_cb.has_lhdc_handle = true;
   }
+  //Example for limit bit rate
+  lhdc_set_limit_bitrate_enabled(a2dp_lhdc_encoder_cb.lhdc_handle, 0);
+  
 
   if (!a2dp_codec_config->copyOutOtaCodecConfig(codec_info)) {
     LOG_ERROR(LOG_TAG,
