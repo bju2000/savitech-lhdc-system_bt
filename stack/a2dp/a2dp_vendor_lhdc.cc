@@ -916,7 +916,7 @@ bool A2dpCodecConfigLhdc::setCodecConfig(const uint8_t* p_peer_codec_info,
   //
   // NOTE: this information is NOT included in the LHDC A2DP codec description
   // that is sent OTA.
-  bits_per_sample = a2dp_lhdc_caps.bits_per_sample;
+  bits_per_sample = a2dp_lhdc_caps.bits_per_sample & sink_info_cie.bits_per_sample;
   LOG_ERROR(LOG_TAG, "%s: bits_per_sample = 0x%x", __func__, bits_per_sample);
   codec_config_.bits_per_sample = BTAV_A2DP_CODEC_BITS_PER_SAMPLE_NONE;
   switch (codec_user_config_.bits_per_sample) {
