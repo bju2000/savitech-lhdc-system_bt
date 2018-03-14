@@ -67,7 +67,7 @@ static const char* LHDC_GET_SAMPLING_FREQ_NAME = "lhdcBT_get_sampling_freq";
 typedef int (*tLHDC_GET_SAMPLING_FREQ)(HANDLE_LHDC_BT hLhdcParam);
 
 static const char* LHDC_INIT_HANDLE_ENCODE_NAME = "lhdcBT_init_handle_encode";
-typedef int (*tLHDC_INIT_HANDLE_ENCODE)(HANDLE_LHDC_BT hLhdcParam,int sampling_freq, int bitPerSample, int bitrate_inx);
+typedef int (*tLHDC_INIT_HANDLE_ENCODE)(HANDLE_LHDC_BT hLhdcParam,int sampling_freq, int bitPerSample, int bitrate_inx, int dualChannels);
 
 //int lhdcBT_adjust_bitrate(HANDLE_LHDC_BT handle, int queueLength)
 static const char* LHDC_AUTO_ADJUST_BITRATE_NAME = "lhdcBT_adjust_bitrate";
@@ -128,6 +128,7 @@ typedef struct {
   int latency_mode_index;
   int pcm_wlength;
   LHDCBT_SMPL_FMT_T pcm_fmt;
+  bool isChannelSeparation;
 } tA2DP_LHDC_ENCODER_PARAMS;
 
 typedef struct {
@@ -177,6 +178,8 @@ typedef struct {
 } tA2DP_LHDC_ENCODER_CB;
 
 //static bool lhdc_abr_loaded = false;
+
+//FILE  *RecFile = NULL;
 
 static tA2DP_LHDC_ENCODER_CB a2dp_lhdc_encoder_cb;
 
@@ -248,11 +251,11 @@ bool A2DP_VendorLoadEncoderLhdc(void) {
   //if (lhdc_get_eqmid_func == NULL) return false;
   lhdc_get_error_code_func = (tLHDC_GET_ERROR_CODE)load_func(LHDC_GET_ERROR_CODE_NAME);
   if (lhdc_get_error_code_func == NULL) return false;
-  
-  
+
+
   lhdc_set_limit_bitrate_enabled = (tLHDC_SET_LIMIT_BITRATE_ENABLED)load_func(LHDC_SET_LIMIT_BITRATE_ENABLED_NAME);
   if (lhdc_set_limit_bitrate_enabled == NULL) return false;
-  
+
 
 /*
   if (!A2DP_VendorLoadLhdcAbr()) {
@@ -378,7 +381,7 @@ static void a2dp_vendor_lhdc_encoder_update(uint16_t peer_mtu,
   }
   //Example for limit bit rate
   lhdc_set_limit_bitrate_enabled(a2dp_lhdc_encoder_cb.lhdc_handle, 0);
-  
+
 
   if (!a2dp_codec_config->copyOutOtaCodecConfig(codec_info)) {
     LOG_ERROR(LOG_TAG,
@@ -471,15 +474,24 @@ static void a2dp_vendor_lhdc_encoder_update(uint16_t peer_mtu,
             p_encoder_params->quality_mode_index, p_encoder_params->pcm_wlength,
             p_encoder_params->pcm_fmt);
 
+  p_encoder_params->isChannelSeparation = A2DP_VendorGetChannelSeparation(p_codec_info);
+
   // Initialize the encoder.
   // NOTE: MTU in the initialization must include the AVDT media header size.
   int result = lhdc_init_handle_encode_func(
       a2dp_lhdc_encoder_cb.lhdc_handle,
       p_encoder_params->sample_rate,
       p_encoder_params->pcm_fmt,
-      p_encoder_params->quality_mode_index
+      p_encoder_params->quality_mode_index,
+      p_encoder_params->isChannelSeparation == true ? 1 : 0
   );
 
+#if defined(RecFile)
+  if (RecFile == NULL) {
+      /* code */
+      RecFile = fopen("/sdcard/Download/lhdc.raw","wb");
+  }
+#endif
   if (result != 0) {
     LOG_ERROR(LOG_TAG, "%s: error initializing the LHDC encoder: %d", __func__,
               result);
@@ -490,6 +502,12 @@ void a2dp_vendor_lhdc_encoder_cleanup(void) {
   if (a2dp_lhdc_encoder_cb.has_lhdc_handle)
     lhdc_free_handle_func(a2dp_lhdc_encoder_cb.lhdc_handle);
   memset(&a2dp_lhdc_encoder_cb, 0, sizeof(a2dp_lhdc_encoder_cb));
+#if defined(RecFile)
+  if (RecFile != NULL) {
+      fclose(RecFile);
+      RecFile = NULL;
+  }
+#endif
 }
 
 void a2dp_vendor_lhdc_feeding_reset(void) {
@@ -604,10 +622,12 @@ static BT_HDR *bt_buf_new( void) {
     return  p_buf;
 }
 
-
+#include <vector>
+using namespace std;
 static void a2dp_lhdc_encode_frames(uint8_t nb_frame) {
     BT_HDR * p_buf = NULL;
-    BT_HDR * p_btBufs[16];
+    //BT_HDR * p_btBufs[128];
+    vector<BT_HDR * > btBufs;
     uint8_t nb_frame_org = nb_frame;
     tA2DP_LHDC_ENCODER_PARAMS* p_encoder_params =
         &a2dp_lhdc_encoder_cb.lhdc_encoder_params;
@@ -622,14 +642,14 @@ static void a2dp_lhdc_encode_frames(uint8_t nb_frame) {
     uint32_t max_mtu_len = ( uint32_t)( a2dp_lhdc_encoder_cb.TxAaMtuSize - A2DP_LHDC_MPL_HDR_LEN);
 #endif
 
-    uint8_t read_buffer[pcm_bytes_per_frame];
-    uint8_t write_buffer[pcm_bytes_per_frame];
+    uint8_t * read_buffer = (uint8_t*)malloc(pcm_bytes_per_frame * 2);
+    uint8_t * write_buffer = (uint8_t*)&(read_buffer[pcm_bytes_per_frame]);
     uint8_t latency = p_encoder_params->latency_mode_index;
     int out_offset = 0;
     int out_len = 0;
     //uint32_t fragments = 0;
 
-    uint32_t bt_buf_num = 0;
+    //uint32_t bt_buf_num = 0;
     while( nb_frame) {
         if ( !a2dp_lhdc_read_feeding(read_buffer)) {
         LOG_WARN(LOG_TAG, "%s: underflow %d", __func__, nb_frame);
@@ -642,14 +662,26 @@ static void a2dp_lhdc_encode_frames(uint8_t nb_frame) {
 
         out_offset = 0;
         out_len = lhdc_encode_func(a2dp_lhdc_encoder_cb.lhdc_handle, read_buffer, write_buffer);
+#if defined(RecFile)
+        if (RecFile != NULL && out_len > 0) {
+            fwrite(write_buffer, sizeof(uint8_t), out_len, RecFile);
+        }
+#endif
 
         nb_frame--;
-
 
         while (out_len > 0) {
             if (p_buf == NULL) {
                 if (NULL == (p_buf = bt_buf_new())) {
                     LOG_ERROR (LOG_TAG, "%s: ERROR", __func__);
+                    if (read_buffer) {
+                        free(read_buffer);
+                        read_buffer = NULL;
+                    }
+                    for(BT_HDR*  p : btBufs) {
+                        free(p);
+                    }
+                    btBufs.clear();
                     return;
                 }
             }
@@ -663,8 +695,7 @@ static void a2dp_lhdc_encode_frames(uint8_t nb_frame) {
             p_buf->len += bytes;
 
             if ( p_buf->len >= max_mtu_len ) {
-                p_btBufs[bt_buf_num] = p_buf;
-                bt_buf_num++;
+                btBufs.push_back(p_buf);
                 // allocate new one
                 p_buf = NULL;
             }
@@ -672,12 +703,12 @@ static void a2dp_lhdc_encode_frames(uint8_t nb_frame) {
     }
 
     if ( p_buf) {
-        p_btBufs[bt_buf_num] = p_buf;
-        bt_buf_num++;
+        btBufs.push_back(p_buf);
     }
 
-    if ( bt_buf_num == 1) {
-        p_buf = p_btBufs[0];
+    LOG_DEBUG(LOG_TAG, "%s:btBufs.size() = %u", __func__, (uint32_t)btBufs.size());
+    if ( btBufs.size() == 1) {
+        p_buf = btBufs[0];
 
         p_buf->layer_specific = a2dp_lhdc_encoder_cb.buf_seq++;
         p_buf->layer_specific <<= 8;
@@ -691,8 +722,12 @@ static void a2dp_lhdc_encode_frames(uint8_t nb_frame) {
 
         uint8_t i;
 
-        for( i = 0; i < bt_buf_num; i++) {
-            p_buf = p_btBufs[i];
+        if (btBufs.size() > 16) {
+            LOG_DEBUG(LOG_TAG, "%s:btBufs.size() = %u", __func__, (uint32_t)btBufs.size());
+        }
+
+        for( i = 0; i < btBufs.size(); i++) {
+            p_buf = btBufs[i];
 
             p_buf->layer_specific = a2dp_lhdc_encoder_cb.buf_seq++;
             p_buf->layer_specific <<= 8;
@@ -700,7 +735,7 @@ static void a2dp_lhdc_encode_frames(uint8_t nb_frame) {
 
             if ( i == 0) {
                 p_buf->layer_specific |= ( A2DP_LHDC_HDR_S_MSK | ( nb_frame_org << A2DP_LHDC_HDR_NUM_SHIFT));
-            } else if ( i == ( bt_buf_num - 1)) {
+            } else if ( i == ( btBufs.size() - 1)) {
                 p_buf->layer_specific |= A2DP_LHDC_HDR_L_MSK;
             }
 
@@ -711,7 +746,11 @@ static void a2dp_lhdc_encode_frames(uint8_t nb_frame) {
     }
 
     a2dp_lhdc_encoder_cb.timestamp += ( nb_frame_org * LHDCBT_ENC_BLOCK_SIZE);
-
+    if (read_buffer) {
+        free(read_buffer);
+        read_buffer = NULL;
+    }
+    btBufs.clear();
 }
 
 static bool a2dp_lhdc_read_feeding(uint8_t* read_buffer) {

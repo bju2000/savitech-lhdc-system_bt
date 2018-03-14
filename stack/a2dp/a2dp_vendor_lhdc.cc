@@ -44,6 +44,7 @@ typedef struct {
   uint8_t sampleRate;  /* Sampling Frequency */
   uint8_t channelMode; /* STEREO/DUAL/MONO */
   btav_a2dp_codec_bits_per_sample_t bits_per_sample;
+  bool isChannelSeparation;
 } tA2DP_LHDC_CIE;
 
 /* LHDC Source codec capabilities */
@@ -56,7 +57,10 @@ static const tA2DP_LHDC_CIE a2dp_lhdc_caps = {
     // channelMode
     (A2DP_LHDC_CHANNEL_MODE_STEREO),
     // bits_per_sample
-    (BTAV_A2DP_CODEC_BITS_PER_SAMPLE_16 | BTAV_A2DP_CODEC_BITS_PER_SAMPLE_24)};
+    (BTAV_A2DP_CODEC_BITS_PER_SAMPLE_16 | BTAV_A2DP_CODEC_BITS_PER_SAMPLE_24),
+    //Channel Separation
+    true
+};
     //(BTAV_A2DP_CODEC_BITS_PER_SAMPLE_16)};
 
 /* Default LHDC codec configuration */
@@ -65,7 +69,8 @@ static const tA2DP_LHDC_CIE a2dp_lhdc_default_config = {
     A2DP_LHDC_CODEC_ID,                 // codecId
     A2DP_LHDC_SAMPLING_FREQ_96000,      // sampleRate
     A2DP_LHDC_CHANNEL_MODE_STEREO,      // channelMode
-    BTAV_A2DP_CODEC_BITS_PER_SAMPLE_24  // bits_per_sample
+    BTAV_A2DP_CODEC_BITS_PER_SAMPLE_24,  // bits_per_sample
+    false
 };
 
 static const tA2DP_ENCODER_INTERFACE a2dp_encoder_interface_lhdc = {
@@ -121,6 +126,13 @@ static tA2DP_STATUS A2DP_BuildInfoLhdc(uint8_t media_type,
   }else if(p_ie->bits_per_sample == BTAV_A2DP_CODEC_BITS_PER_SAMPLE_16){
       para = para | A2DP_LHDC_BIT_FMT_16;
   }
+
+  if (p_ie->isChannelSeparation == true) {
+      para |= A2DP_LHDC_CHANNEL_SEPARATION;   //Force supported Dual channels
+  }else {
+      para &= ~A2DP_LHDC_CHANNEL_SEPARATION;
+  }
+
   *p_result = para;
   if (*p_result == 0) return A2DP_INVALID_PARAMS;
 
@@ -181,12 +193,19 @@ static tA2DP_STATUS A2DP_ParseInfoLhdc(tA2DP_LHDC_CIE* p_ie,
 
   //LOG_DEBUG(LOG_TAG, "%s: *p_codec_info = 0x%x", __func__, *p_codec_info);
 
+  if (*p_codec_info & A2DP_LHDC_CHANNEL_SEPARATION){
+    p_ie->isChannelSeparation = true;
+  }else{
+    p_ie->isChannelSeparation = false;
+  }
+
   p_ie->sampleRate = *p_codec_info & A2DP_LHDC_SAMPLING_FREQ_MASK;
 
   p_ie->channelMode = A2DP_LHDC_CHANNEL_MODE_STEREO;
 
   //p_ie->bits_per_sample = *p_codec_info & A2DP_LHDC_BIT_FMT_MASK;
 
+  LOG_DEBUG(LOG_TAG, "%s: *p_codec_info[0x%02x] & A2DP_LHDC_BIT_FMT_MASK[0x%02x] = 0x%02x", __func__, *p_codec_info, A2DP_LHDC_BIT_FMT_MASK, *p_codec_info & A2DP_LHDC_BIT_FMT_MASK);
   switch (*p_codec_info & A2DP_LHDC_BIT_FMT_MASK) {
   	case A2DP_LHDC_BIT_FMT_24:
 	  p_ie->bits_per_sample = BTAV_A2DP_CODEC_BITS_PER_SAMPLE_24;
@@ -200,7 +219,8 @@ static tA2DP_STATUS A2DP_ParseInfoLhdc(tA2DP_LHDC_CIE* p_ie,
   	default:
       //LOG_DEBUG(LOG_TAG, "%s: p_codec_info & A2DP_LHDC_BIT_FMT_MASK = %d", __func__, (*p_codec_info & A2DP_LHDC_BIT_FMT_MASK));
   	return A2DP_WRONG_CODEC;
-}
+  }
+
 
   /*
   p_ie->sampleRate = *p_codec_info++ & A2DP_LHDC_SAMPLING_FREQ_MASK;
@@ -446,6 +466,22 @@ bool A2DP_VendorGetPacketTimestampLhdc(UNUSED_ATTR const uint8_t* p_codec_info,
   // TODO: Is this function really codec-specific?
   *p_timestamp = *(const uint32_t*)p_data;
   return true;
+}
+
+bool A2DP_VendorGetChannelSeparation(const uint8_t* p_codec_info){
+  tA2DP_LHDC_CIE lhdc_cie;
+
+  // Check whether the codec info contains valid data
+  tA2DP_STATUS a2dp_status = A2DP_ParseInfoLhdc(&lhdc_cie, p_codec_info, false);
+  if (a2dp_status != A2DP_SUCCESS) {
+    LOG_ERROR(LOG_TAG, "%s: cannot decode codec information: %d", __func__,
+              a2dp_status);
+    return false;
+  }
+
+  LOG_ERROR(LOG_TAG, "%s: isChannelSeparation =%d", __func__, lhdc_cie.isChannelSeparation);
+
+  return lhdc_cie.isChannelSeparation == 0 ? false : true;
 }
 
 bool A2DP_VendorBuildCodecHeaderLhdc(UNUSED_ATTR const uint8_t* p_codec_info,
@@ -917,7 +953,8 @@ bool A2dpCodecConfigLhdc::setCodecConfig(const uint8_t* p_peer_codec_info,
   // NOTE: this information is NOT included in the LHDC A2DP codec description
   // that is sent OTA.
   bits_per_sample = a2dp_lhdc_caps.bits_per_sample & sink_info_cie.bits_per_sample;
-  LOG_ERROR(LOG_TAG, "%s: bits_per_sample = 0x%x", __func__, bits_per_sample);
+  LOG_ERROR(LOG_TAG, "%s: a2dp_lhdc_caps.bits_per_sample = 0x%02x, sink_info_cie.bits_per_sample = 0x%02x", __func__, a2dp_lhdc_caps.bits_per_sample, sink_info_cie.bits_per_sample);
+  LOG_ERROR(LOG_TAG, "%s: bits_per_sample = 0x%02x", __func__, bits_per_sample);
   codec_config_.bits_per_sample = BTAV_A2DP_CODEC_BITS_PER_SAMPLE_NONE;
   switch (codec_user_config_.bits_per_sample) {
     case BTAV_A2DP_CODEC_BITS_PER_SAMPLE_16:
@@ -1066,6 +1103,10 @@ bool A2dpCodecConfigLhdc::setCodecConfig(const uint8_t* p_peer_codec_info,
     codec_config_.codec_specific_3 = codec_user_config_.codec_specific_3;
   if (codec_user_config_.codec_specific_4 != 0)
     codec_config_.codec_specific_4 = codec_user_config_.codec_specific_4;
+
+
+  result_config_cie.isChannelSeparation = sink_info_cie.isChannelSeparation;
+  LOG_ERROR(LOG_TAG,"%s: isChannelSeparation = %d", __func__, result_config_cie.isChannelSeparation);
 
   // Create a local copy of the peer codec capability, and the
   // result codec config.

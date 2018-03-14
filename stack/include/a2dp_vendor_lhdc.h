@@ -124,6 +124,10 @@ bool A2DP_VendorGetPacketTimestampLhdc(const uint8_t* p_codec_info,
 bool A2DP_VendorBuildCodecHeaderLhdc(const uint8_t* p_codec_info, BT_HDR* p_buf,
                                      uint16_t frames_per_packet);
 
+
+// New feature to check codec info is supported Channel Separation.
+bool A2DP_VendorGetChannelSeparation(const uint8_t* p_codec_info);
+
 // Decodes and displays LHDC codec info (for debugging).
 // |p_codec_info| is a pointer to the LHDC codec_info to decode and display.
 void A2DP_VendorDumpCodecInfoLhdc(const uint8_t* p_codec_info);
