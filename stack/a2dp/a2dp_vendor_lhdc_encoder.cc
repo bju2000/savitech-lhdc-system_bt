@@ -698,6 +698,10 @@ static void a2dp_lhdc_encode_frames(uint8_t nb_frame) {
                 btBufs.push_back(p_buf);
                 // allocate new one
                 p_buf = NULL;
+                if (btBufs.size() >= 64) {
+                    LOG_ERROR(LOG_TAG, "%s: Packet buffer usage to big!(%u)", __func__, (uint32_t)btBufs.size());
+                    break;
+                }
             }
         }
     }
