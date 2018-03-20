@@ -649,6 +649,8 @@ static void a2dp_lhdc_encode_frames(uint8_t nb_frame) {
     uint8_t latency = p_encoder_params->latency_mode_index;
     int out_offset = 0;
     int out_len = 0;
+    static uint32_t time_prev = time_get_os_boottime_ms();
+    static uint32_t allSendbytes = 0;
 
     //if (1) {
     if (!p_encoder_params->isChannelSeparation) {
@@ -696,6 +698,7 @@ static void a2dp_lhdc_encode_frames(uint8_t nb_frame) {
                 out_offset += bytes;
                 out_len -= bytes;
                 p_buf->len += bytes;
+                allSendbytes += bytes;
 
                 if ( p_buf->len >= max_mtu_len ) {
                     btBufs.push_back(p_buf);
@@ -707,6 +710,13 @@ static void a2dp_lhdc_encode_frames(uint8_t nb_frame) {
                     }
                 }
             }
+        }
+        uint32_t now_ms = time_get_os_boottime_ms();
+        if (now_ms - time_prev >= 1000 ) {
+            /* code */
+            LOG_WARN(LOG_TAG, "%s: Current data rate about %d kbps", __func__, (allSendbytes * 8) / 1000);
+            allSendbytes = 0;
+            time_prev = now_ms;
         }
 
         if ( p_buf) {
@@ -764,8 +774,6 @@ static void a2dp_lhdc_encode_frames(uint8_t nb_frame) {
         //int frame_cnt = 0;          //2 frames in 1 packet
         //bool remain = false;
         p_buf = NULL;
-        static uint32_t time_prev = time_get_os_boottime_ms();
-        static uint32_t allSendbytes = 0;
         while( nb_frame) {
             if ( !a2dp_lhdc_read_feeding(read_buffer)) {
             LOG_WARN(LOG_TAG, "%s: underflow %d", __func__, nb_frame);
