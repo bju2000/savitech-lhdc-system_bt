@@ -59,6 +59,7 @@
 #define A2DP_LHDC_VENDOR_ID 0x0000053a
 // [Octet 4-5] Vendor Specific Codec ID
 #define A2DP_LHDC_CODEC_ID 0x484C
+#define A2DP_LHDC_LL_CODEC_ID 0x4C4C
 // [Octet 6], [Bits 0-3] Sampling Frequency
 #define A2DP_LHDC_SAMPLING_FREQ_MASK 0x0F
 #define A2DP_LHDC_SAMPLING_FREQ_44100 0x08

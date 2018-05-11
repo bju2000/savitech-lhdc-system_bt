@@ -25,6 +25,7 @@
 #include "a2dp_vendor_aptx_hd.h"
 #include "a2dp_vendor_ldac.h"
 #include "a2dp_vendor_lhdc.h"
+#include "a2dp_vendor_lhdc_ll.h"
 #include "bt_target.h"
 #include "osi/include/log.h"
 #include "osi/include/osi.h"
@@ -615,6 +616,8 @@ const char* A2DP_VendorCodecIndexStr(btav_a2dp_codec_index_t codec_index) {
       return A2DP_VendorCodecIndexStrLdac();
     case BTAV_A2DP_CODEC_INDEX_SOURCE_LHDC:
       return A2DP_VendorCodecIndexStrLhdc();
+    case BTAV_A2DP_CODEC_INDEX_SOURCE_LHDC_LL:
+      return A2DP_VendorCodecIndexStrLhdcLL();
     // Add a switch statement for each vendor-specific codec
     case BTAV_A2DP_CODEC_INDEX_MAX:
       break;
@@ -639,6 +642,8 @@ bool A2DP_VendorInitCodecConfig(btav_a2dp_codec_index_t codec_index,
       return A2DP_VendorInitCodecConfigLdac(p_cfg);
     case BTAV_A2DP_CODEC_INDEX_SOURCE_LHDC:
       return A2DP_VendorInitCodecConfigLhdc(p_cfg);
+    case BTAV_A2DP_CODEC_INDEX_SOURCE_LHDC_LL:
+      return A2DP_VendorInitCodecConfigLhdcLL(p_cfg);
     // Add a switch statement for each vendor-specific codec
     case BTAV_A2DP_CODEC_INDEX_MAX:
       break;

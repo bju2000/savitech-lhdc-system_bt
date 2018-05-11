@@ -55,6 +55,8 @@ cc_library_static {
         "a2dp/a2dp_vendor_ldac_encoder.cc",
         "a2dp/a2dp_vendor_lhdc.cc",
         "a2dp/a2dp_vendor_lhdc_encoder.cc",
+        "a2dp/a2dp_vendor_lhdc_ll.cc",
+        "a2dp/a2dp_vendor_lhdc_ll_encoder.cc",
         "avct/avct_api.cc",
         "avct/avct_bcb_act.cc",
         "avct/avct_ccb.cc",
