@@ -550,21 +550,6 @@ void a2dp_vendor_lhdc_send_frames(uint64_t timestamp_us) {
   if (nb_frame == 0) return;
 
   for (uint8_t counter = 0; counter < nb_iterations; counter++) {
-      /*
-    if (a2dp_lhdc_encoder_cb.has_lhdc_abr_handle) {
-      int flag_enable = 1;
-      int prev_eqmid = a2dp_lhdc_encoder_cb.last_lhdc_abr_eqmid;
-      a2dp_lhdc_encoder_cb.last_lhdc_abr_eqmid =
-          a2dp_lhdc_abr_proc(a2dp_lhdc_encoder_cb.lhdc_handle,
-                             a2dp_lhdc_encoder_cb.lhdc_abr_handle,
-                             a2dp_lhdc_encoder_cb.TxQueueLength, flag_enable);
-      if (prev_eqmid != a2dp_lhdc_encoder_cb.last_lhdc_abr_eqmid)
-        a2dp_lhdc_encoder_cb.lhdc_abr_adjustments++;
-#ifndef OS_GENERIC
-      ATRACE_INT("LHDC ABR level", a2dp_lhdc_encoder_cb.last_lhdc_abr_eqmid);
-#endif
-    }
-    */
     // Transcode frame and enqueue
     a2dp_lhdc_encode_frames(nb_frame);
   }
@@ -652,9 +637,7 @@ static void a2dp_lhdc_encode_frames(uint8_t nb_frame) {
     static uint32_t time_prev = time_get_os_boottime_ms();
     static uint32_t allSendbytes = 0;
 
-    //if (1) {
-    if (!p_encoder_params->isChannelSeparation) {
-        /* code */
+    //if (!p_encoder_params->isChannelSeparation) {
         while( nb_frame) {
             if ( !a2dp_lhdc_read_feeding(read_buffer)) {
             LOG_WARN(LOG_TAG, "%s: underflow %d", __func__, nb_frame);
@@ -768,91 +751,6 @@ static void a2dp_lhdc_encode_frames(uint8_t nb_frame) {
             read_buffer = NULL;
         }
         btBufs.clear();
-    }else {
-
-            LOG_WARN(LOG_TAG, "%s: loop start", __func__);
-        //int frame_cnt = 0;          //2 frames in 1 packet
-        //bool remain = false;
-        p_buf = NULL;
-        while( nb_frame) {
-            if ( !a2dp_lhdc_read_feeding(read_buffer)) {
-            LOG_WARN(LOG_TAG, "%s: underflow %d", __func__, nb_frame);
-            a2dp_lhdc_encoder_cb.lhdc_feeding_state.counter +=
-                      nb_frame * LHDCBT_ENC_BLOCK_SIZE *
-                      a2dp_lhdc_encoder_cb.feeding_params.channel_count *
-                      a2dp_lhdc_encoder_cb.feeding_params.bits_per_sample / 8;
-                break;
-            }
-
-            out_len = lhdc_encode_func(a2dp_lhdc_encoder_cb.lhdc_handle, read_buffer, write_buffer);
-            if (out_len <= 0 || out_len > (int)max_mtu_len) {
-            LOG_WARN(LOG_TAG, "%s: encoded size to large %d, skip 1 frame.", __func__, out_len);
-            a2dp_lhdc_encoder_cb.lhdc_feeding_state.counter +=
-                      nb_frame * LHDCBT_ENC_BLOCK_SIZE *
-                      a2dp_lhdc_encoder_cb.feeding_params.channel_count *
-                      a2dp_lhdc_encoder_cb.feeding_params.bits_per_sample / 8;
-                break;
-            }
-
-            nb_frame--;
-
-            while (out_len > 0) {
-                if (p_buf == NULL) {
-                    if (NULL == (p_buf = bt_buf_new())) {
-                        LOG_ERROR (LOG_TAG, "%s: ERROR", __func__);
-                        a2dp_lhdc_encoder_cb.lhdc_feeding_state.counter +=
-                        nb_frame * LHDCBT_ENC_BLOCK_SIZE *
-                        a2dp_lhdc_encoder_cb.feeding_params.channel_count *
-                        a2dp_lhdc_encoder_cb.feeding_params.bits_per_sample / 8;
-                        break;
-                    }
-                    p_buf->len = 0;
-                }
-                if ((p_buf->len + out_len) > (int32_t)max_mtu_len) {
-                    p_buf->layer_specific = a2dp_lhdc_encoder_cb.buf_seq++;
-                    p_buf->layer_specific <<= 8;
-                    p_buf->layer_specific |= ( latency | ( nb_frame_org << A2DP_LHDC_HDR_NUM_SHIFT));
-
-                    *( ( uint32_t*)( p_buf + 1)) = a2dp_lhdc_encoder_cb.timestamp;
-
-                    a2dp_lhdc_encoder_cb.enqueue_callback( p_buf, 1);
-                    p_buf = NULL;
-                    LOG_WARN(LOG_TAG, "%s: Change new frame.", __func__);
-                }else{
-                    uint8_t *p = ( uint8_t *)( p_buf + 1) + p_buf->offset + p_buf->len;
-                    memcpy( p, write_buffer, out_len);
-                    p_buf->len += out_len;
-                    allSendbytes += out_len;
-                    out_len = 0;
-
-                    if (nb_frame == 0) {
-                        p_buf->layer_specific = a2dp_lhdc_encoder_cb.buf_seq++;
-                        p_buf->layer_specific <<= 8;
-                        p_buf->layer_specific |= ( latency | ( nb_frame_org << A2DP_LHDC_HDR_NUM_SHIFT));
-
-                        *( ( uint32_t*)( p_buf + 1)) = a2dp_lhdc_encoder_cb.timestamp;
-
-                        a2dp_lhdc_encoder_cb.enqueue_callback( p_buf, 1);
-                        LOG_WARN(LOG_TAG, "%s: Last frame.", __func__);
-                        p_buf = NULL;
-                    }
-                }
-            }
-        }
-        uint32_t now_ms = time_get_os_boottime_ms();
-        if (now_ms - time_prev >= 1000 ) {
-            /* code */
-            LOG_WARN(LOG_TAG, "%s: Current data rate about %d kbps", __func__, (allSendbytes * 8) / 1000);
-            allSendbytes = 0;
-            time_prev = now_ms;
-        }
-        LOG_WARN(LOG_TAG, "%s: loop end", __func__);
-        a2dp_lhdc_encoder_cb.timestamp += ( nb_frame_org * LHDCBT_ENC_BLOCK_SIZE);
-        if (read_buffer) {
-            free(read_buffer);
-            read_buffer = NULL;
-        }
-    }
 }
 
 static bool a2dp_lhdc_read_feeding(uint8_t* read_buffer) {
