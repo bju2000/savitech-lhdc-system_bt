@@ -117,12 +117,8 @@ static tA2DP_STATUS A2DP_BuildInfoLhdcLL(uint8_t media_type,
   // sample rate bit0 ~ bit2
   para = (uint8_t)(p_ie->sampleRate & A2DP_LHDC_SAMPLING_FREQ_MASK);
 
-  if (p_ie->bits_per_sample == (BTAV_A2DP_CODEC_BITS_PER_SAMPLE_24 | BTAV_A2DP_CODEC_BITS_PER_SAMPLE_16)) {
+  if (p_ie->bits_per_sample == (BTAV_A2DP_CODEC_BITS_PER_SAMPLE_16)) {
       /* code */
-      para = para | (A2DP_LHDC_BIT_FMT_24 | A2DP_LHDC_BIT_FMT_16);
-  }else if(p_ie->bits_per_sample == BTAV_A2DP_CODEC_BITS_PER_SAMPLE_24){
-      para = para | A2DP_LHDC_BIT_FMT_24;
-  }else if(p_ie->bits_per_sample == BTAV_A2DP_CODEC_BITS_PER_SAMPLE_16){
       para = para | A2DP_LHDC_BIT_FMT_16;
   }
 
@@ -384,10 +380,8 @@ int A2DP_VendorGetTrackSampleRateLhdcLL(const uint8_t* p_codec_info) {
       return 44100;
     case A2DP_LHDC_SAMPLING_FREQ_48000:
       return 48000;
-    case A2DP_LHDC_SAMPLING_FREQ_88200:
-      return 88200;
-    case A2DP_LHDC_SAMPLING_FREQ_96000:
-      return 96000;
+    default:
+      break;
   }
 
   return -1;

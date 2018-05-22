@@ -143,8 +143,7 @@ typedef uint8_t tA2DP_BITS_PER_SAMPLE;
 extern size_t audio_a2dp_hw_stream_compute_buffer_size(
     btav_a2dp_codec_sample_rate_t codec_sample_rate,
     btav_a2dp_codec_bits_per_sample_t codec_bits_per_sample,
-    btav_a2dp_codec_channel_mode_t codec_channel_mode,
-    btav_a2dp_codec_index_t codec_index);
+    btav_a2dp_codec_channel_mode_t codec_channel_mode);
 
 // Returns a string representation of |event|.
 extern const char* audio_a2dp_hw_dump_ctrl_event(tA2DP_CTRL_CMD event);

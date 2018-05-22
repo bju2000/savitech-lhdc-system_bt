@@ -117,6 +117,8 @@ struct a2dp_stream_common {
   size_t buffer_sz;
   struct a2dp_config cfg;
   a2dp_state_t state;
+//Chris Add      
+  btav_a2dp_codec_index_t codec_index;
 };
 
 struct a2dp_stream_out {
@@ -510,8 +512,6 @@ static int a2dp_read_output_audio_config(
     struct a2dp_stream_common* common, btav_a2dp_codec_config_t* codec_config,
     btav_a2dp_codec_config_t* codec_capability, bool update_stream_config) {
   struct a2dp_config stream_config;
-//Chris Add      
-  btav_a2dp_codec_index_t codec_index;
   
 
   if (a2dp_command(common, A2DP_CTRL_GET_OUTPUT_AUDIO_CONFIG) < 0) {
@@ -547,7 +547,7 @@ static int a2dp_read_output_audio_config(
     return -1;
   }
 //Chris Add
-  if (a2dp_ctrl_receive(common, &codec_index,
+  if (a2dp_ctrl_receive(common, &common->codec_index,
                         sizeof(btav_a2dp_codec_index_t)) < 0) {
     return -1;
   }
@@ -616,7 +616,7 @@ static int a2dp_read_output_audio_config(
     common->cfg.format = stream_config.format;
     common->buffer_sz = audio_a2dp_hw_stream_compute_buffer_size(
         codec_config->sample_rate, codec_config->bits_per_sample,
-        codec_config->channel_mode, codec_index);
+        codec_config->channel_mode);
   }
 
   INFO(
@@ -937,17 +937,12 @@ static size_t out_get_buffer_size(const struct audio_stream* stream) {
 size_t audio_a2dp_hw_stream_compute_buffer_size(
     btav_a2dp_codec_sample_rate_t codec_sample_rate,
     btav_a2dp_codec_bits_per_sample_t codec_bits_per_sample,
-    btav_a2dp_codec_channel_mode_t codec_channel_mode, 
-    btav_a2dp_codec_index_t codec_index) {
+    btav_a2dp_codec_channel_mode_t codec_channel_mode) {
   size_t buffer_sz = AUDIO_STREAM_OUTPUT_BUFFER_SZ;  // Default value
   uint64_t time_period_ms = 20;                // Conservative 20ms
   uint32_t sample_rate;
   uint32_t bits_per_sample;
   uint32_t number_of_channels;
-
-//Chris Add
-  if ( codec_index == BTAV_A2DP_CODEC_INDEX_SOURCE_LHDC_LL)  
-    time_period_ms = 100;
 
   // Check the codec config sample rate
   switch (codec_sample_rate) {
@@ -1244,7 +1239,11 @@ static uint32_t out_get_latency(const struct audio_stream_out* stream) {
        audio_stream_out_frame_size(&out->stream) / out->common.cfg.rate) *
       1000;
 
-  return (latency_us / 1000) + 200;
+//Chris Add
+  if ( out->common.codec_index == BTAV_A2DP_CODEC_INDEX_SOURCE_LHDC_LL)
+    return (latency_us / 1000);
+  else
+    return (latency_us / 1000) + 200;
 }
 
 static int out_set_volume(UNUSED_ATTR struct audio_stream_out* stream,
