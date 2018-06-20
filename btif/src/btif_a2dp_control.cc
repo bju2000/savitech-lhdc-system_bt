@@ -178,6 +178,8 @@ static void btif_a2dp_recv_ctrl_data(void) {
     case A2DP_CTRL_GET_OUTPUT_AUDIO_CONFIG: {
       btav_a2dp_codec_config_t codec_config;
       btav_a2dp_codec_config_t codec_capability;
+//Chris Add      
+      btav_a2dp_codec_index_t codec_index;
       codec_config.sample_rate = BTAV_A2DP_CODEC_SAMPLE_RATE_NONE;
       codec_config.bits_per_sample = BTAV_A2DP_CODEC_BITS_PER_SAMPLE_NONE;
       codec_config.channel_mode = BTAV_A2DP_CODEC_CHANNEL_MODE_NONE;
@@ -189,6 +191,7 @@ static void btif_a2dp_recv_ctrl_data(void) {
       if (current_codec != nullptr) {
         codec_config = current_codec->getCodecConfig();
         codec_capability = current_codec->getCodecCapability();
+        codec_index = current_codec->codecIndex();
       }
 
       btif_a2dp_command_ack(A2DP_CTRL_ACK_SUCCESS);
@@ -212,6 +215,10 @@ static void btif_a2dp_recv_ctrl_data(void) {
       UIPC_Send(UIPC_CH_ID_AV_CTRL, 0, reinterpret_cast<const uint8_t*>(
                                            &codec_capability.channel_mode),
                 sizeof(btav_a2dp_codec_channel_mode_t));
+//Chris Add
+      UIPC_Send(UIPC_CH_ID_AV_CTRL, 0, reinterpret_cast<const uint8_t*>(
+                                           &codec_index),
+                sizeof(btav_a2dp_codec_index_t));
       break;
     }
 

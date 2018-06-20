@@ -1095,12 +1095,12 @@
 
 /* Number of simultaneous stream endpoints. */
 #ifndef AVDT_NUM_SEPS
-#define AVDT_NUM_SEPS 6
+#define AVDT_NUM_SEPS 7 //6
 #endif
 
 /* Number of transport channels setup by AVDT for all media streams */
 #ifndef AVDT_NUM_TC_TBL
-#define AVDT_NUM_TC_TBL 6
+#define AVDT_NUM_TC_TBL 7   //6
 #endif
 
 /* Maximum size in bytes of the content protection information element. */

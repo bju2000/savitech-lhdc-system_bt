@@ -199,6 +199,7 @@ class StackA2dpTest : public ::testing::Test {
           supported = has_shared_library(LDAC_ENCODER_LIB_NAME);
           break;
         case BTAV_A2DP_CODEC_INDEX_SOURCE_LHDC:
+        case BTAV_A2DP_CODEC_INDEX_SOURCE_LHDC_LL:
           // Codec LDAC is supported only if the device has the corresponding
           // shared library installed.
           supported = has_shared_library(LHDC_ENCODER_LIB_NAME);

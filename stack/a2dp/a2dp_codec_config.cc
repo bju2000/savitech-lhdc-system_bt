@@ -32,6 +32,7 @@
 #include "a2dp_vendor_aptx_hd.h"
 #include "a2dp_vendor_ldac.h"
 #include "a2dp_vendor_lhdc.h"
+#include "a2dp_vendor_lhdc_ll.h"
 #include "osi/include/log.h"
 
 /* The Media Type offset within the codec info byte array */
@@ -123,6 +124,9 @@ A2dpCodecConfig* A2dpCodecConfig::createCodec(
       break;
     case BTAV_A2DP_CODEC_INDEX_SOURCE_LHDC:
       codec_config = new A2dpCodecConfigLhdc(codec_priority);
+      break;
+    case BTAV_A2DP_CODEC_INDEX_SOURCE_LHDC_LL:
+      codec_config = new A2dpCodecConfigLhdcLL(codec_priority);
       break;
     // Add a switch statement for each vendor-specific codec
     case BTAV_A2DP_CODEC_INDEX_MAX:

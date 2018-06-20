@@ -117,6 +117,8 @@ struct a2dp_stream_common {
   size_t buffer_sz;
   struct a2dp_config cfg;
   a2dp_state_t state;
+//Chris Add      
+  btav_a2dp_codec_index_t codec_index;
 };
 
 struct a2dp_stream_out {
@@ -510,6 +512,7 @@ static int a2dp_read_output_audio_config(
     struct a2dp_stream_common* common, btav_a2dp_codec_config_t* codec_config,
     btav_a2dp_codec_config_t* codec_capability, bool update_stream_config) {
   struct a2dp_config stream_config;
+  
 
   if (a2dp_command(common, A2DP_CTRL_GET_OUTPUT_AUDIO_CONFIG) < 0) {
     ERROR("get a2dp output audio config failed");
@@ -541,6 +544,11 @@ static int a2dp_read_output_audio_config(
   }
   if (a2dp_ctrl_receive(common, &codec_capability->channel_mode,
                         sizeof(btav_a2dp_codec_channel_mode_t)) < 0) {
+    return -1;
+  }
+//Chris Add
+  if (a2dp_ctrl_receive(common, &common->codec_index,
+                        sizeof(btav_a2dp_codec_index_t)) < 0) {
     return -1;
   }
 
@@ -931,7 +939,7 @@ size_t audio_a2dp_hw_stream_compute_buffer_size(
     btav_a2dp_codec_bits_per_sample_t codec_bits_per_sample,
     btav_a2dp_codec_channel_mode_t codec_channel_mode) {
   size_t buffer_sz = AUDIO_STREAM_OUTPUT_BUFFER_SZ;  // Default value
-  const uint64_t time_period_ms = 20;                // Conservative 20ms
+  uint64_t time_period_ms = 20;                // Conservative 20ms
   uint32_t sample_rate;
   uint32_t bits_per_sample;
   uint32_t number_of_channels;
@@ -1231,7 +1239,11 @@ static uint32_t out_get_latency(const struct audio_stream_out* stream) {
        audio_stream_out_frame_size(&out->stream) / out->common.cfg.rate) *
       1000;
 
-  return (latency_us / 1000) + 200;
+//Chris Add
+  if ( out->common.codec_index == BTAV_A2DP_CODEC_INDEX_SOURCE_LHDC_LL)
+    return (latency_us / 1000);
+  else
+    return (latency_us / 1000) + 200;
 }
 
 static int out_set_volume(UNUSED_ATTR struct audio_stream_out* stream,
